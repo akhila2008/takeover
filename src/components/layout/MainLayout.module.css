@@ -1,0 +1,30 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left var(--transition-normal);
+  width: 100%;
+}
+
+.sidebarOpen {
+  margin-left: var(--sidebar-width);
+}
+
+.sidebarClosed {
+  margin-left: 80px;
+}
+
+.pageContent {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  height: calc(100vh - var(--header-height));
+}

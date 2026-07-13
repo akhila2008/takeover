@@ -1,0 +1,217 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-success);
+  padding: 8px 16px;
+  border-radius: var(--border-radius-xl);
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.pulseDot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent-success);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  height: calc(100% - 100px);
+}
+
+.dnaPanel, .ecosystemPanel {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.personalityTag {
+  background: linear-gradient(90deg, var(--accent-secondary), var(--accent-primary));
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.dnaVisualization {
+  display: flex;
+  gap: 24px;
+  flex: 1;
+  min-height: 300px;
+}
+
+.helixContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+}
+
+.helixStrand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+  animation: rotateHelix 4s linear infinite;
+}
+
+.dot1, .dot2 {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.dot1 { background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); }
+.dot2 { background: var(--accent-secondary); box-shadow: 0 0 10px var(--accent-secondary); }
+
+.line {
+  height: 2px;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 4px;
+}
+
+@keyframes rotateHelix {
+  0% { transform: scaleX(1); }
+  50% { transform: scaleX(-1); }
+  100% { transform: scaleX(1); }
+}
+
+.radarContainer {
+  flex: 2;
+  position: relative;
+}
+
+.dnaInsights {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.insightItem {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 16px;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--glass-border);
+}
+
+.insightItem h4 {
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.insightItem p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.ecosystemMap {
+  flex: 1;
+  position: relative;
+  background: radial-gradient(circle at center, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+}
+
+.node {
+  position: absolute;
+  padding: 12px 24px;
+  border-radius: var(--border-radius-xl);
+  font-weight: 600;
+  font-size: 0.9rem;
+  z-index: 10;
+  backdrop-filter: blur(5px);
+}
+
+.centerNode {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--accent-primary);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+}
+
+.nodeRipple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--accent-primary);
+  animation: ripple 2s infinite cubic-bezier(0.65, 0, 0.34, 1);
+  z-index: -1;
+}
+
+@keyframes ripple {
+  0% { width: 100%; height: 100%; opacity: 1; }
+  100% { width: 250%; height: 250%; opacity: 0; }
+}
+
+.supplierNode { top: 15%; left: 15%; background: rgba(59, 130, 246, 0.2); border: 1px solid var(--accent-info); color: var(--accent-info); }
+.inventoryNode { top: 15%; right: 15%; background: rgba(245, 158, 11, 0.2); border: 1px solid var(--accent-warning); color: var(--accent-warning); }
+.salesNode { bottom: 15%; left: 15%; background: rgba(16, 185, 129, 0.2); border: 1px solid var(--accent-success); color: var(--accent-success); }
+.customerNode { bottom: 15%; right: 15%; background: rgba(239, 68, 68, 0.2); border: 1px solid var(--accent-danger); color: var(--accent-danger); }
+
+.connections {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.connectionLine {
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 2;
+  stroke-dasharray: 5, 5;
+  animation: flowLine 20s linear infinite;
+}
+
+@keyframes flowLine {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 1000; }
+}
