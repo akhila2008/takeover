@@ -256,59 +256,18 @@ IMPORTANT: You must provide your entire response translated into the following l
            setMessages(prev => prev.map(msg => 
              msg.id === aiMsgId ? { ...msg, text: "I apologize, I detected a logical inconsistency in my own analysis. Let me recalculate... \n\n(Validation Engine: Hallucination blocked. Regenerating...)" } : msg
            ));
-           // In a real production environment, we would re-trigger streamAiResponse recursively here.
-           // For this implementation, we block the hallucination and append the strict JSON rule.
         }
 
-        return;
       } catch (error: any) {
-        console.error("Gemini API Network Error:", error);
+        console.error("Ollama API Error:", error);
         setIsTyping(false);
         setMessages(prev => {
           const exists = prev.some(msg => msg.id === aiMsgId);
-          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: `Network Error connecting to Gemini. Check your API key.` }];
-          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: `Network Error connecting to Gemini. Check your API key.` } : msg);
+          const errorMsg = "Ollama connection failed. Is the server running locally at http://localhost:11434 ?";
+          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: errorMsg }];
+          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: errorMsg } : msg);
         });
-        return;
       }
-    }
-
-    // Fallback: Local Keyword Mock Logic
-    const lowerInput = userText.toLowerCase();
-    let responseText = `I've analyzed your query regarding "${userText.length > 30 ? userText.substring(0, 30) + '...' : userText}". While that area is currently stable, I suggest we focus our immediate attention on the Q2 retention drop. Would you like to see the breakdown for that?`;
-    let includeChart = false;
-
-    if (lowerInput.match(/\b(marketing|ad|campaign|ads)\b/)) {
-      responseText = "Our current marketing ROI is at 3.2x. However, the new social campaign is underperforming by 15%. I recommend shifting ₹5,000 to search ads.";
-    } else if (lowerInput.match(/\b(inventory|stock|supply|products)\b/)) {
-      responseText = "We have 12% excess inventory in Q3 seasonal items. Liquidating these now at a 10% discount will free up ₹45k in cash flow without hurting margins.";
-    } else if (lowerInput.match(/\b(hire|staff|employee|team|hiring)\b/)) {
-      responseText = "Given our projected revenue growth, we are understaffed in customer support. Hiring 2 more representatives will reduce ticket resolution time by 30%.";
-    } else if (lowerInput.match(/\b(profit|revenue|margin|sales|money)\b/)) {
-      responseText = "Profit margins are up 4% this quarter, primarily driven by the recent pricing optimization. If we continue this trend, we will exceed our annual goal.";
-      includeChart = true;
-    } else if (lowerInput.match(/\b(strategy|plan|roadmap|action|do|boost|grow|improve|business|help|advice|better)\b/)) {
-      responseText = "My recommended strategy for the next 90 days: 1. Reduce inventory overhead. 2. Boost customer retention programs. 3. Expand into the European market.";
-    } else if (lowerInput.match(/\b(risk|danger|threat|problem|issue|process)\b/)) {
-      responseText = "The primary risk here is operational bottlenecking. We have modeled a 15% variance in supply chain delays. I recommend setting up automated contingency alerts.";
-    } else if (lowerInput.match(/\b(yes|yeah|yep|sure|metrics|show|retention|churn|data|breakdown)\b/)) {
-      responseText = "Here is the breakdown of the specific metrics driving the current trends. We are seeing a 5% drop in recurring revenue from the mid-market segment, while enterprise is stable.";
-      includeChart = true;
-    } else if (lowerInput.match(/\b(hello|hi|hey|morning)\b/)) {
-      responseText = "Hello! I am your AI CEO assistant. How can I help you optimize your business today?";
-    } else {
-      const genericResponses = [
-        `Analyzing your input regarding "${userText.length > 20 ? userText.substring(0, 20) + '...' : userText}"... Data suggests we should proceed with caution and monitor Q3 KPIs before committing capital.`,
-        "Based on our current trajectory, this aligns with our annual objectives. I advise pushing forward while keeping customer acquisition costs strictly under $45.",
-        "That's an interesting variable. If we execute on this, our predictive models show a potential 8% increase in operational efficiency.",
-        "I've cross-referenced this against market benchmarks. It seems viable, but we must ensure our cloud infrastructure scales accordingly.",
-        "This would require reallocating resources from the current marketing sprint. Do you want me to simulate the financial impact of that shift?"
-      ];
-      responseText = genericResponses[Math.floor(Math.random() * genericResponses.length)];
-    }
-
-    setIsTyping(false);
-    setMessages(prev => [...prev, { id: aiMsgId, sender: 'ai', text: responseText, hasChart: includeChart }]);
   };
 
   const handleSend = async () => {
