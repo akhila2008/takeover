@@ -56,7 +56,35 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
         
         <div className={styles.currentPeriod}>
           <Calendar size={16} className={styles.calendarIcon} />
-          <span>{analysisMode === 'Monthly' ? `${selectedMonth} ${selectedYear}` : `${selectedYear} Overview`}</span>
+          {analysisMode === 'Monthly' ? (
+            <div className={styles.selectGroup}>
+              <select 
+                value={selectedMonth} 
+                onChange={e => setSelectedMonth(e.target.value)}
+                className={styles.periodSelect}
+              >
+                {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <select 
+                value={selectedYear} 
+                onChange={e => setSelectedYear(parseInt(e.target.value))}
+                className={styles.periodSelect}
+              >
+                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          ) : (
+            <div className={styles.selectGroup}>
+              <select 
+                value={selectedYear} 
+                onChange={e => setSelectedYear(parseInt(e.target.value))}
+                className={styles.periodSelect}
+              >
+                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <span>Overview</span>
+            </div>
+          )}
         </div>
         
         <button className={styles.navBtn} onClick={analysisMode === 'Monthly' ? handleNextMonth : () => setSelectedYear(selectedYear + 1)}>

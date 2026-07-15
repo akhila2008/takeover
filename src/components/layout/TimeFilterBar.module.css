@@ -101,3 +101,32 @@
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
 }
+
+.selectGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.periodSelect {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  outline: none;
+  font-family: inherit;
+}
+
+.periodSelect:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.periodSelect option {
+  background: var(--bg-secondary, #1a1a1a);
+  color: var(--text-primary);
+}
