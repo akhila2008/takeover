@@ -4,6 +4,8 @@ import { useBusinessData } from '../../context/BusinessDataContext';
 import styles from './TimeFilterBar.module.css';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: currentYear - 2020 + 1 }, (_, i) => 2020 + i);
 
 interface Props {
   onNavigate?: (page: string) => void;
@@ -70,7 +72,7 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
                 onChange={e => setSelectedYear(parseInt(e.target.value))}
                 className={styles.periodSelect}
               >
-                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
           ) : (
@@ -80,7 +82,7 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
                 onChange={e => setSelectedYear(parseInt(e.target.value))}
                 className={styles.periodSelect}
               >
-                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
               <span>Overview</span>
             </div>
