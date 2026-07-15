@@ -300,10 +300,33 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
   useEffect(() => {
     if (!isLoaded) return;
     
-    // We apply all analyzed documents to the entire timeline, but generateIntelligenceContext
-    // uses the selectedMonth and selectedYear to dynamically vary the metrics for each period.
-    const docsForPeriod = documents.filter(d => d.status === 'analyzed');
-    const prevDocsForPeriod = documents.filter(d => d.status === 'analyzed');
+    // Strictly filter documents to the period they were uploaded in.
+    const docsForPeriod = documents.filter(d => {
+      if (d.status !== 'analyzed') return false;
+      if (analysisMode === 'Monthly') return d.month === selectedMonth && d.year === selectedYear;
+      return d.year === selectedYear;
+    });
+
+    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    let prevMonth = selectedMonth;
+    let prevYear = selectedYear;
+    if (analysisMode === 'Monthly') {
+      const currentIdx = MONTHS.indexOf(selectedMonth);
+      if (currentIdx === 0) {
+        prevMonth = 'December';
+        prevYear = selectedYear - 1;
+      } else {
+        prevMonth = MONTHS[currentIdx - 1];
+      }
+    } else {
+      prevYear = selectedYear - 1;
+    }
+
+    const prevDocsForPeriod = documents.filter(d => {
+      if (d.status !== 'analyzed') return false;
+      if (analysisMode === 'Monthly') return d.month === prevMonth && d.year === prevYear;
+      return d.year === prevYear;
+    });
 
     const context = generateIntelligenceContext(docsForPeriod, prevDocsForPeriod, selectedMonth, selectedYear);
     setAiContext(context);
@@ -334,21 +357,6 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       setOperationalScore(0);
       setConfidenceScore(0);
       setBusinessGrade('Critical');
-    }
-
-    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    let prevMonth = selectedMonth;
-    let prevYear = selectedYear;
-    if (analysisMode === 'Monthly') {
-      const currentIdx = MONTHS.indexOf(selectedMonth);
-      if (currentIdx === 0) {
-        prevMonth = 'December';
-        prevYear = selectedYear - 1;
-      } else {
-        prevMonth = MONTHS[currentIdx - 1];
-      }
-    } else {
-      prevYear = selectedYear - 1;
     }
 
     const prevContext = generateIntelligenceContext(prevDocsForPeriod, [], prevMonth, prevYear);
