@@ -17,6 +17,7 @@ import { DocumentIntel } from './pages/DocumentIntel';
 import { BusinessHistory } from './pages/BusinessHistory';
 import { PeriodComparison } from './pages/PeriodComparison';
 import { supabase } from './lib/supabaseClient';
+import { UserProfile } from './pages/UserProfile';
 
 function App() {
   const [activePage, setActivePage] = useState('executive-briefing');
@@ -67,6 +68,7 @@ function App() {
       case 'risk-radar':
         return <RiskRadar />;
       case 'profile':
+        return <UserProfile />;
       case 'business-dna':
       case 'settings':
         return <Profile />;
