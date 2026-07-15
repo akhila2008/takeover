@@ -1,10 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
+import { useBusinessData } from '../../context/BusinessDataContext';
 
 export const BusinessHealthGauge: React.FC = () => {
+  const { healthScore } = useBusinessData();
   const data = [
-    { name: 'Health', value: 87, fill: 'var(--accent-success)' }
+    { name: 'Health', value: healthScore, fill: 'var(--accent-success)' }
   ];
 
   return (
@@ -40,7 +42,7 @@ export const BusinessHealthGauge: React.FC = () => {
           </RadialBarChart>
         </ResponsiveContainer>
         <div style={{ position: 'absolute', top: '55%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-          <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>87</span>
+          <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>{healthScore}</span>
           <span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>%</span>
         </div>
       </div>
