@@ -143,25 +143,45 @@ export const AiCeoMode: React.FC = () => {
   const streamAiResponse = async (userText: string, chatHistory: Message[], aiMsgId: string) => {
     const generateMockResponse = (input: string) => {
       const lowerInput = input.toLowerCase();
-      if (lowerInput.includes('revenue') || lowerInput.includes('sales')) {
-        return "(Demo Mode) Revenue is trending positively this quarter, up 12% from last month. I recommend reallocating some budget to marketing to maintain this momentum.";
-      }
-      if (lowerInput.includes('expense') || lowerInput.includes('cost')) {
-        return "(Demo Mode) Operating expenses are slightly higher than projected due to increased software licensing costs. We should audit our tech stack next week.";
-      }
-      if (lowerInput.includes('customer') || lowerInput.includes('client')) {
-        return "(Demo Mode) Customer retention is at 92%. However, new customer acquisition has slowed. Let's look into a targeted ad campaign.";
-      }
-      if (lowerInput.includes('inventory') || lowerInput.includes('stock')) {
-        return "(Demo Mode) We have a potential stockout risk for 'Product X'. I recommend increasing the buffer stock by 15% immediately.";
-      }
-      const generalResponses = [
-        "(Demo Mode) That's a great question. Based on current metrics, our overall business health is strong, but we must stay vigilant on cash flow.",
-        "(Demo Mode) I'm analyzing the data... The trends suggest we should focus on optimizing operational efficiency this quarter.",
-        "(Demo Mode) According to the latest data pulse, we are on track to meet our annual targets, provided we keep expenses in check.",
-        "(Demo Mode) Our predictive models indicate steady growth. Is there a specific metric you'd like me to dive deeper into?"
-      ];
-      return generalResponses[Math.floor(Math.random() * generalResponses.length)];
+      
+      const responses: Record<string, string[]> = {
+        revenue: [
+          "(Demo Mode) Revenue is trending positively this quarter. Our predictive models suggest a 12% increase by year-end.",
+          "(Demo Mode) Based on the data, sales have hit targets in 3 of our top 4 regions. I recommend doubling down on the underperforming region.",
+          "(Demo Mode) The top-line growth is solid, heavily driven by returning customers. We should focus on maximizing lifetime value."
+        ],
+        expense: [
+          "(Demo Mode) Operating expenses are slightly higher than projected due to increased software licensing costs. Let's audit the tech stack.",
+          "(Demo Mode) We are burning capital faster than expected in the operational sector. A minor restructuring could save 8% monthly.",
+          "(Demo Mode) Costs are within the acceptable threshold, but logistics expenses are rising. We should renegotiate vendor contracts."
+        ],
+        customer: [
+          "(Demo Mode) Customer retention is strong at 92%. However, new acquisition has slowed down. A targeted ad campaign could help.",
+          "(Demo Mode) Client satisfaction scores are hovering around 4.2/5. Let's investigate the recent drop in support ticket resolution speeds.",
+          "(Demo Mode) Our top 20% of customers are driving 80% of revenue. We should launch an exclusive loyalty program for them."
+        ],
+        inventory: [
+          "(Demo Mode) We have a potential stockout risk for our top-selling product. I recommend increasing the buffer stock immediately.",
+          "(Demo Mode) Inventory turnover ratio is healthy, but we have some dead stock accumulating in warehouse B.",
+          "(Demo Mode) Supply chain delays might impact next month's inventory levels. We should order raw materials early."
+        ],
+        general: [
+          "(Demo Mode) That's an interesting question. Based on current metrics, our overall business health is strong, but we must stay vigilant on cash flow.",
+          "(Demo Mode) I'm analyzing the data... The trends suggest we should focus on optimizing operational efficiency this quarter.",
+          "(Demo Mode) According to the latest data pulse, we are on track to meet our annual targets, provided we keep expenses in check.",
+          "(Demo Mode) Our predictive models indicate steady growth. Is there a specific metric you'd like me to dive deeper into?",
+          "(Demo Mode) I don't have enough specific data to answer that definitively, but structurally the business is performing above the baseline."
+        ]
+      };
+
+      let category = 'general';
+      if (lowerInput.includes('revenue') || lowerInput.includes('sale') || lowerInput.includes('profit')) category = 'revenue';
+      else if (lowerInput.includes('expense') || lowerInput.includes('cost') || lowerInput.includes('spend')) category = 'expense';
+      else if (lowerInput.includes('customer') || lowerInput.includes('client') || lowerInput.includes('user')) category = 'customer';
+      else if (lowerInput.includes('inventory') || lowerInput.includes('stock') || lowerInput.includes('product')) category = 'inventory';
+
+      const categoryResponses = responses[category];
+      return categoryResponses[Math.floor(Math.random() * categoryResponses.length)];
     };
 
     try {
