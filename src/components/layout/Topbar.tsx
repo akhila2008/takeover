@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Settings, LogOut, Mic } from 'lucide-react';
+import { Bell, Settings, LogOut, Mic } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import styles from './Topbar.module.css';
 
@@ -33,19 +33,7 @@ export const Topbar: React.FC<TopbarProps> = ({ onNavigate }) => {
 
   return (
     <header className={styles.topbar}>
-      <div className={styles.searchContainer}>
-        <div className={styles.searchBar}>
-          <Search size={18} className={styles.searchIcon} />
-          <input 
-            type="text" 
-            placeholder="Ask AI CEO or press Cmd + K..." 
-            className={styles.searchInput}
-          />
-          <div className={styles.shortcutKey}>⌘ K</div>
-        </div>
-      </div>
-
-      <div className={styles.actions}>
+      <div className={styles.actions} style={{ marginLeft: 'auto' }}>
         <button className={`${styles.iconBtn} ${styles.voiceBtn}`} title="AI Voice Executive" onClick={() => onNavigate?.('ai-ceo-mode')}>
           <Mic size={20} />
         </button>
