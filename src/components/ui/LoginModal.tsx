@@ -47,7 +47,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onComplete }) => {
     } catch (err: any) {
       console.error('Auth error', err);
       // Determine fallback behaviour if Supabase is misconfigured or network fails
-      if (err.message?.includes('FetchError') || err.message?.includes('placeholder')) {
+      if (
+        err.message?.includes('FetchError') || 
+        err.message?.includes('placeholder') || 
+        err.message?.includes('Failed to fetch')
+      ) {
         // Mock success for development fallback if Supabase isn't hooked up
         console.warn('Supabase not connected. Falling back to local auth mock.');
         localStorage.setItem('takeover_auth_mock', JSON.stringify({ email, fullName }));
