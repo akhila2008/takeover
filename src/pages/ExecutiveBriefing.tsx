@@ -121,6 +121,9 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
         <div>
           <h1 className="gradient-text" style={{ fontSize: '2.5rem', marginBottom: '8px' }}>Executive Briefing</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Generated today at 09:00 AM</p>
+          <div style={{ marginTop: '8px', padding: '8px', background: 'rgba(255,0,0,0.1)', border: '1px solid red', borderRadius: '4px', fontSize: '0.8rem' }}>
+            DEBUG: Mode={analysisMode}, Month={selectedMonth}, Year={selectedYear}, TotalDocs={documents.length}, DocsThisPeriod={documents.filter(d => d.month === selectedMonth).length}, hasData={hasData ? 'true' : 'false'}, totalRevenue={totalRevenue}
+          </div>
         </div>
         <button 
           className={`${styles.playBtn} ${isPlaying ? styles.playing : ''}`} 
