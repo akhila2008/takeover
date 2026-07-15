@@ -2,12 +2,15 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Activity, Database, Zap, Shield, FileText, Target, Users, TrendingUp, BarChart2, Cloud, Clock, PieChart, FileSearch } from 'lucide-react';
 import styles from './UniversalModule.module.css';
+import { useBusinessData } from '../context/BusinessDataContext';
 
 interface UniversalModuleProps {
   title: string;
 }
 
 export const UniversalModule: React.FC<UniversalModuleProps> = ({ title }) => {
+  const { documents } = useBusinessData();
+  const hasData = documents.length > 0;
   // Define custom configurations for different modules
   const moduleConfigs: Record<string, any> = {
     'Success Roadmap': {
@@ -117,86 +120,95 @@ export const UniversalModule: React.FC<UniversalModuleProps> = ({ title }) => {
         </div>
       </header>
 
-      <div className={styles.metricsGrid}>
-        {config.metrics.map((m: any, i: number) => (
-          <motion.div 
-            key={`${title}-metric-${i}`}
-            className={`glass-panel ${styles.metricCard}`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <div className={styles.metricHeader}>
-              <span className={styles.metricIcon}>{m.icon}</span>
-              <span className={styles.metricLabel}>{m.label}</span>
-            </div>
-            <div className={styles.metricValue}>{m.value}</div>
-            <div className={styles.metricTrend}>Optimal status</div>
-          </motion.div>
-        ))}
-      </div>
-
-      <div className={styles.mainDashboard}>
-        <motion.div 
-          key={`${title}-chart`}
-          className={`glass-panel ${styles.chartArea}`}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className={styles.panelHeader}>
-            <h3>Real-Time Analytics</h3>
-            <span className={styles.liveBadge}>LIVE</span>
-          </div>
-          
-          <div className={styles.mockChartContainer}>
-            <div className={styles.chartLines}>
-              <div className={styles.line}></div>
-              <div className={styles.line}></div>
-              <div className={styles.line}></div>
-              <div className={styles.line}></div>
-            </div>
-            <div className={styles.bars}>
-              {config.bars.map((height: number, i: number) => (
-                <motion.div 
-                  key={`${title}-bar-${i}`} 
-                  className={styles.bar} 
-                  style={{ height: `${height}%` }}
-                  initial={{ height: 0 }}
-                  animate={{ height: `${height}%` }}
-                  transition={{ delay: 0.5 + (i * 0.05), duration: 0.8, type: 'spring' }}
-                />
-              ))}
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div 
-          key={`${title}-feed`}
-          className={`glass-panel ${styles.feedArea}`}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <div className={styles.panelHeader}>
-            <h3>Recent System Activity</h3>
-          </div>
-          <div className={styles.activityFeed}>
-            {config.feed.map((item: any, i: number) => (
-              <div className={styles.feedItem} key={i}>
-                <div className={styles.feedIcon} style={{ background: 'rgba(99, 102, 241, 0.2)', color: 'var(--accent-primary)' }}>
-                  {item.icon}
+      {!hasData ? (
+        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
+          <p style={{ fontSize: '1.2rem', marginBottom: '16px' }}>No business data detected.</p>
+          <p>Please upload your financial documents in the Document Intel hub to activate this module.</p>
+        </div>
+      ) : (
+        <>
+          <div className={styles.metricsGrid}>
+            {config.metrics.map((m: any, i: number) => (
+              <motion.div 
+                key={`${title}-metric-${i}`}
+                className={`glass-panel ${styles.metricCard}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+              >
+                <div className={styles.metricHeader}>
+                  <span className={styles.metricIcon}>{m.icon}</span>
+                  <span className={styles.metricLabel}>{m.label}</span>
                 </div>
-                <div className={styles.feedContent}>
-                  <h4>{item.title}</h4>
-                  <p>{item.desc}</p>
-                </div>
-                <span className={styles.feedTime}>{item.time}</span>
-              </div>
+                <div className={styles.metricValue}>{m.value}</div>
+                <div className={styles.metricTrend}>Optimal status</div>
+              </motion.div>
             ))}
           </div>
-        </motion.div>
-      </div>
+
+          <div className={styles.mainDashboard}>
+            <motion.div 
+              key={`${title}-chart`}
+              className={`glass-panel ${styles.chartArea}`}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <div className={styles.panelHeader}>
+                <h3>Real-Time Analytics</h3>
+                <span className={styles.liveBadge}>LIVE</span>
+              </div>
+              
+              <div className={styles.mockChartContainer}>
+                <div className={styles.chartLines}>
+                  <div className={styles.line}></div>
+                  <div className={styles.line}></div>
+                  <div className={styles.line}></div>
+                  <div className={styles.line}></div>
+                </div>
+                <div className={styles.bars}>
+                  {config.bars.map((height: number, i: number) => (
+                    <motion.div 
+                      key={`${title}-bar-${i}`} 
+                      className={styles.bar} 
+                      style={{ height: `${height}%` }}
+                      initial={{ height: 0 }}
+                      animate={{ height: `${height}%` }}
+                      transition={{ delay: 0.5 + (i * 0.05), duration: 0.8, type: 'spring' }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              key={`${title}-feed`}
+              className={`glass-panel ${styles.feedArea}`}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <div className={styles.panelHeader}>
+                <h3>Recent System Activity</h3>
+              </div>
+              <div className={styles.activityFeed}>
+                {config.feed.map((item: any, i: number) => (
+                  <div className={styles.feedItem} key={i}>
+                    <div className={styles.feedIcon} style={{ background: 'rgba(99, 102, 241, 0.2)', color: 'var(--accent-primary)' }}>
+                      {item.icon}
+                    </div>
+                    <div className={styles.feedContent}>
+                      <h4>{item.title}</h4>
+                      <p>{item.desc}</p>
+                    </div>
+                    <span className={styles.feedTime}>{item.time}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

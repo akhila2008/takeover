@@ -1,4 +1,8 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { generateIntelligenceContext } from '../lib/IntelligenceEngine';
+import type { AIContextObject } from '../lib/IntelligenceEngine';
 
 export interface UploadedDocument {
   id: string;
@@ -6,6 +10,9 @@ export interface UploadedDocument {
   type: string;
   status: 'parsing' | 'analyzed';
   dateUploaded: string;
+  day: number;
+  month: string;
+  year: number;
 }
 
 interface BusinessDataState {
@@ -14,22 +21,74 @@ interface BusinessDataState {
   activeCustomers: number;
   monthlyExpenses: number;
   cashFlow: number;
+  prevHealthScore: number;
+  prevTotalRevenue: number;
+  prevActiveCustomers: number;
+  prevMonthlyExpenses: number;
+  prevCashFlow: number;
+  financialScore: number;
+  inventoryScore: number;
+  customerScore: number;
+  growthScore: number;
+  operationalScore: number;
+  confidenceScore: number;
+  prevFinancialScore: number;
+  prevInventoryScore: number;
+  prevCustomerScore: number;
+  prevGrowthScore: number;
+  prevOperationalScore: number;
+  businessGrade: string;
   documents: UploadedDocument[];
+  analysisMode: 'Monthly' | 'Annual';
+  selectedMonth: string;
+  selectedYear: number;
+  aiContext: AIContextObject | null;
+  setAnalysisMode: (mode: 'Monthly' | 'Annual') => void;
+  setSelectedMonth: (month: string) => void;
+  setSelectedYear: (year: number) => void;
   addDocument: (doc: UploadedDocument) => void;
   updateDocumentStatus: (id: string, status: 'parsing' | 'analyzed') => void;
   updateMetricsFromDocument: (fileName: string) => void;
+  removeDocument: (id: string) => void;
+  generateSnapshot: () => void;
 }
 
 const defaultState: BusinessDataState = {
-  healthScore: 92,
-  totalRevenue: 2400000,
-  activeCustomers: 12450,
-  monthlyExpenses: 800000,
-  cashFlow: 1600000,
+  healthScore: 0,
+  totalRevenue: 0,
+  activeCustomers: 0,
+  monthlyExpenses: 0,
+  cashFlow: 0,
+  prevHealthScore: 0,
+  prevTotalRevenue: 0,
+  prevActiveCustomers: 0,
+  prevMonthlyExpenses: 0,
+  prevCashFlow: 0,
+  financialScore: 0,
+  inventoryScore: 0,
+  customerScore: 0,
+  growthScore: 0,
+  operationalScore: 0,
+  confidenceScore: 0,
+  prevFinancialScore: 0,
+  prevInventoryScore: 0,
+  prevCustomerScore: 0,
+  prevGrowthScore: 0,
+  prevOperationalScore: 0,
+  businessGrade: 'Critical',
   documents: [],
+  analysisMode: 'Monthly',
+  selectedMonth: new Date().toLocaleString('default', { month: 'long' }),
+  selectedYear: new Date().getFullYear(),
+  aiContext: null,
+  setAnalysisMode: () => {},
+  setSelectedMonth: () => {},
+  setSelectedYear: () => {},
   addDocument: () => {},
   updateDocumentStatus: () => {},
-  updateMetricsFromDocument: () => {}
+  updateMetricsFromDocument: () => {},
+  removeDocument: () => {},
+  generateSnapshot: () => {}
 };
 
 const BusinessDataContext = createContext<BusinessDataState>(defaultState);
@@ -37,40 +96,302 @@ const BusinessDataContext = createContext<BusinessDataState>(defaultState);
 export const useBusinessData = () => useContext(BusinessDataContext);
 
 export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [healthScore, setHealthScore] = useState(defaultState.healthScore);
-  const [totalRevenue, setTotalRevenue] = useState(defaultState.totalRevenue);
-  const [activeCustomers, setActiveCustomers] = useState(defaultState.activeCustomers);
-  const [monthlyExpenses, setMonthlyExpenses] = useState(defaultState.monthlyExpenses);
-  const [cashFlow, setCashFlow] = useState(defaultState.cashFlow);
-  const [documents, setDocuments] = useState<UploadedDocument[]>(defaultState.documents);
+  const [healthScore, setHealthScore] = useState(() => {
+    const saved = localStorage.getItem('takeover_business_data');
+    return saved ? JSON.parse(saved).healthScore : defaultState.healthScore;
+  });
+  const [totalRevenue, setTotalRevenue] = useState(() => {
+    const saved = localStorage.getItem('takeover_business_data');
+    return saved ? JSON.parse(saved).totalRevenue : defaultState.totalRevenue;
+  });
+  const [activeCustomers, setActiveCustomers] = useState(() => {
+    const saved = localStorage.getItem('takeover_business_data');
+    return saved ? JSON.parse(saved).activeCustomers : defaultState.activeCustomers;
+  });
+  const [monthlyExpenses, setMonthlyExpenses] = useState(() => {
+    const saved = localStorage.getItem('takeover_business_data');
+    return saved ? JSON.parse(saved).monthlyExpenses : defaultState.monthlyExpenses;
+  });
+  const [cashFlow, setCashFlow] = useState(() => {
+    const saved = localStorage.getItem('takeover_business_data');
+    return saved ? JSON.parse(saved).cashFlow : defaultState.cashFlow;
+  });
+  const [prevHealthScore, setPrevHealthScore] = useState(defaultState.prevHealthScore);
+  const [prevTotalRevenue, setPrevTotalRevenue] = useState(defaultState.prevTotalRevenue);
+  const [prevActiveCustomers, setPrevActiveCustomers] = useState(defaultState.prevActiveCustomers);
+  const [prevMonthlyExpenses, setPrevMonthlyExpenses] = useState(defaultState.prevMonthlyExpenses);
+  const [prevCashFlow, setPrevCashFlow] = useState(defaultState.prevCashFlow);
+  const [financialScore, setFinancialScore] = useState(defaultState.financialScore);
+  const [inventoryScore, setInventoryScore] = useState(defaultState.inventoryScore);
+  const [customerScore, setCustomerScore] = useState(defaultState.customerScore);
+  const [growthScore, setGrowthScore] = useState(defaultState.growthScore);
+  const [operationalScore, setOperationalScore] = useState(defaultState.operationalScore);
+  const [confidenceScore, setConfidenceScore] = useState(defaultState.confidenceScore);
+  
+  const [prevFinancialScore, setPrevFinancialScore] = useState(defaultState.prevFinancialScore);
+  const [prevInventoryScore, setPrevInventoryScore] = useState(defaultState.prevInventoryScore);
+  const [prevCustomerScore, setPrevCustomerScore] = useState(defaultState.prevCustomerScore);
+  const [prevGrowthScore, setPrevGrowthScore] = useState(defaultState.prevGrowthScore);
+  const [prevOperationalScore, setPrevOperationalScore] = useState(defaultState.prevOperationalScore);
+  
+  const [businessGrade, setBusinessGrade] = useState(defaultState.businessGrade);
 
-  const addDocument = (doc: UploadedDocument) => {
+  const [documents, setDocuments] = useState<UploadedDocument[]>(() => {
+    const saved = localStorage.getItem('takeover_business_data');
+    return saved ? JSON.parse(saved).documents : defaultState.documents;
+  });
+  const [analysisMode, setAnalysisMode] = useState<'Monthly' | 'Annual'>(() => {
+    const saved = localStorage.getItem('takeover_business_data');
+    return saved && JSON.parse(saved).analysisMode ? JSON.parse(saved).analysisMode : defaultState.analysisMode;
+  });
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const saved = localStorage.getItem('takeover_business_data');
+    return saved && JSON.parse(saved).selectedMonth ? JSON.parse(saved).selectedMonth : defaultState.selectedMonth;
+  });
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const saved = localStorage.getItem('takeover_business_data');
+    return saved && JSON.parse(saved).selectedYear ? JSON.parse(saved).selectedYear : defaultState.selectedYear;
+  });
+  const [aiContext, setAiContext] = useState<AIContextObject | null>(defaultState.aiContext);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Fetch initial data from Supabase
+  useEffect(() => {
+    const fetchFromSupabase = async () => {
+      try {
+        const { data: metrics, error: metricsError } = await supabase
+          .from('business_metrics')
+          .select('*')
+          .eq('id', 'default')
+          .single();
+
+        if (metrics && !metricsError) {
+          setHealthScore(metrics.health_score || 0);
+          setTotalRevenue(metrics.total_revenue || 0);
+          setActiveCustomers(metrics.active_customers || 0);
+          setMonthlyExpenses(metrics.monthly_expenses || 0);
+          setCashFlow(metrics.cash_flow || 0);
+          setFinancialScore(metrics.financial_score || 0);
+          setInventoryScore(metrics.inventory_score || 0);
+          setCustomerScore(metrics.customer_score || 0);
+          setGrowthScore(metrics.growth_score || 0);
+          setOperationalScore(metrics.operational_score || 0);
+          setConfidenceScore(metrics.confidence_score || 0);
+          
+          const score = metrics.health_score || 0;
+          if (score >= 90) setBusinessGrade('Excellent');
+          else if (score >= 80) setBusinessGrade('Very Healthy');
+          else if (score >= 70) setBusinessGrade('Healthy');
+          else if (score >= 60) setBusinessGrade('Average');
+          else if (score >= 40) setBusinessGrade('Needs Improvement');
+          else setBusinessGrade('Critical');
+        }
+
+        const { data: docs, error: docsError } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('business_id', 'default')
+          .order('created_at', { ascending: false });
+
+        if (docs && !docsError) {
+          if (docs.length > 0) {
+            setDocuments(docs.map(d => ({
+              id: d.id,
+              name: d.name,
+              type: d.type,
+              status: d.status as 'parsing' | 'analyzed',
+              dateUploaded: d.date_uploaded,
+              day: d.day,
+              month: d.month,
+              year: d.year
+            })));
+          }
+        }
+      } catch (e) {
+        console.error('Supabase fetch error, maintaining local storage', e);
+        // Since we already initialized from local storage synchronously, we do nothing here on failure.
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+    
+    fetchFromSupabase();
+  }, []);
+
+  // Sync to Supabase & LocalStorage whenever state changes
+  useEffect(() => {
+    if (!isLoaded) return; // Don't overwrite database with initial state
+
+    const saveToSupabase = async () => {
+      // Save metrics
+      const { error } = await supabase.from('business_metrics').upsert({
+        id: 'default',
+        health_score: healthScore,
+        total_revenue: totalRevenue,
+        active_customers: activeCustomers,
+        monthly_expenses: monthlyExpenses,
+        cash_flow: cashFlow,
+        financial_score: financialScore,
+        inventory_score: inventoryScore,
+        customer_score: customerScore,
+        growth_score: growthScore,
+        operational_score: operationalScore,
+        confidence_score: confidenceScore
+      }, { onConflict: 'id' });
+      if (error) console.error(error);
+    };
+
+    saveToSupabase();
+
+    // Still save to local storage as backup
+    localStorage.setItem('takeover_business_data', JSON.stringify({
+      healthScore, totalRevenue, activeCustomers, monthlyExpenses, cashFlow, documents,
+      analysisMode, selectedMonth, selectedYear
+    }));
+  }, [healthScore, totalRevenue, activeCustomers, monthlyExpenses, cashFlow, documents, analysisMode, selectedMonth, selectedYear, isLoaded]);
+
+  const addDocument = async (doc: UploadedDocument) => {
+    // We now append to the existing documents to keep a permanent history
     setDocuments(prev => [doc, ...prev]);
+    
+    // Insert the new document with time fields
+    const { error } = await supabase.from('documents').insert({
+      id: doc.id,
+      business_id: 'default',
+      name: doc.name,
+      type: doc.type,
+      status: doc.status,
+      date_uploaded: doc.dateUploaded,
+      day: doc.day,
+      month: doc.month,
+      year: doc.year
+    });
+    if (error) console.error(error);
   };
 
-  const updateDocumentStatus = (id: string, status: 'parsing' | 'analyzed') => {
+  const updateDocumentStatus = async (id: string, status: 'parsing' | 'analyzed') => {
     setDocuments(prev => prev.map(doc => doc.id === id ? { ...doc, status } : doc));
+    const { error } = await supabase.from('documents').update({ status }).eq('id', id);
+    if (error) console.error(error);
   };
 
-  const updateMetricsFromDocument = (fileName: string) => {
-    const lowerName = fileName.toLowerCase();
-    if (lowerName.includes('sales') || lowerName.includes('revenue')) {
-      const boost = Math.floor(Math.random() * 200000) + 100000;
-      setTotalRevenue(prev => prev + boost);
-      setCashFlow(prev => prev + boost);
-      setHealthScore(prev => Math.min(100, prev + 1));
-    } else if (lowerName.includes('expense') || lowerName.includes('cost')) {
-      const increase = Math.floor(Math.random() * 50000) + 20000;
-      setMonthlyExpenses(prev => prev + increase);
-      setCashFlow(prev => prev - increase);
-      setHealthScore(prev => Math.max(0, prev - 1));
-    } else if (lowerName.includes('customer') || lowerName.includes('client')) {
-      const newCusts = Math.floor(Math.random() * 500) + 100;
-      setActiveCustomers(prev => prev + newCusts);
-      setHealthScore(prev => Math.min(100, prev + 2));
+  const updateMetricsFromDocument = () => {
+    // We no longer take a fileName parameter. Instead, we recalculate everything based on the current analyzed documents.
+  };
+
+  // Recalculate metrics whenever documents change
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    const docsForPeriod = documents.filter(d => {
+      if (d.status !== 'analyzed') return false;
+      if (analysisMode === 'Monthly') return d.month === selectedMonth && d.year === selectedYear;
+      return d.year === selectedYear;
+    });
+
+    // Calculate previous period docs
+    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    let prevMonth = selectedMonth;
+    let prevYear = selectedYear;
+    if (analysisMode === 'Monthly') {
+      const currentIdx = MONTHS.indexOf(selectedMonth);
+      if (currentIdx === 0) {
+        prevMonth = 'December';
+        prevYear = selectedYear - 1;
+      } else {
+        prevMonth = MONTHS[currentIdx - 1];
+      }
     } else {
-      setHealthScore(prev => Math.min(100, prev + 1));
+      prevYear = selectedYear - 1;
     }
+
+    const prevDocsForPeriod = documents.filter(d => {
+      if (d.status !== 'analyzed') return false;
+      if (analysisMode === 'Monthly') return d.month === prevMonth && d.year === prevYear;
+      return d.year === prevYear;
+    });
+
+    const context = generateIntelligenceContext(docsForPeriod, prevDocsForPeriod);
+    setAiContext(context);
+
+    if (context) {
+      setTotalRevenue(context.revenue);
+      setMonthlyExpenses(context.expenses);
+      setActiveCustomers(context.averageRating * 100); // approximated for UI mapping
+      setCashFlow(context.cashFlow);
+      setHealthScore(context.healthScore); 
+      setFinancialScore(context.financialScore);
+      setInventoryScore(context.inventoryScore);
+      setCustomerScore(context.customerScore);
+      setGrowthScore(context.growthScore);
+      setOperationalScore(context.operationsScore);
+      setConfidenceScore(Math.min(99, 40 + (docsForPeriod.length * 15)));
+      setBusinessGrade(context.grade);
+    } else {
+      setTotalRevenue(0);
+      setMonthlyExpenses(0);
+      setActiveCustomers(0);
+      setCashFlow(0);
+      setHealthScore(0);
+      setFinancialScore(0);
+      setInventoryScore(0);
+      setCustomerScore(0);
+      setGrowthScore(0);
+      setOperationalScore(0);
+      setConfidenceScore(0);
+      setBusinessGrade('Critical');
+    }
+
+    const prevContext = generateIntelligenceContext(prevDocsForPeriod, []);
+    if (prevContext) {
+      setPrevTotalRevenue(prevContext.revenue);
+      setPrevMonthlyExpenses(prevContext.expenses);
+      setPrevActiveCustomers(prevContext.averageRating * 100);
+      setPrevCashFlow(prevContext.cashFlow);
+      setPrevHealthScore(prevContext.healthScore);
+      setPrevFinancialScore(prevContext.financialScore);
+      setPrevInventoryScore(prevContext.inventoryScore);
+      setPrevCustomerScore(prevContext.customerScore);
+      setPrevGrowthScore(prevContext.growthScore);
+      setPrevOperationalScore(prevContext.operationsScore);
+    } else {
+      setPrevTotalRevenue(0);
+      setPrevMonthlyExpenses(0);
+      setPrevActiveCustomers(0);
+      setPrevCashFlow(0);
+      setPrevHealthScore(0);
+      setPrevFinancialScore(0);
+      setPrevInventoryScore(0);
+      setPrevCustomerScore(0);
+      setPrevGrowthScore(0);
+      setPrevOperationalScore(0);
+    }
+  }, [documents, isLoaded, analysisMode, selectedMonth, selectedYear]);
+  const removeDocument = async (id: string) => {
+    setDocuments(prev => prev.filter(doc => doc.id !== id));
+    // Delete from Supabase
+    const { error } = await supabase.from('documents').delete().eq('id', id);
+    if (error) console.error(error);
+  };
+
+  const generateSnapshot = async () => {
+    const reportId = `report-${Date.now()}`;
+    const newReport = {
+      id: reportId,
+      business_id: 'default',
+      analysis_date: new Date().toISOString(),
+      selected_period: analysisMode === 'Monthly' ? `${selectedMonth} ${selectedYear}` : `${selectedYear}`,
+      health_score: healthScore,
+      financial_score: financialScore,
+      inventory_score: inventoryScore,
+      customer_score: customerScore,
+      growth_score: growthScore,
+      operational_score: operationalScore,
+      confidence_score: confidenceScore,
+      executive_summary: `AI Analysis completed for ${analysisMode === 'Monthly' ? selectedMonth : 'Year'} ${selectedYear}. The health score was determined to be ${healthScore}/100 with a ${businessGrade} rating. Key metrics include Total Revenue: ₹${totalRevenue}, Margin/Cash Flow: ₹${cashFlow}, backed by a ${confidenceScore}% confidence interval.`
+    };
+    const { error } = await supabase.from('ai_reports_history').insert(newReport);
+    if (error) console.error(error);
   };
 
   return (
@@ -80,12 +401,39 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       activeCustomers,
       monthlyExpenses,
       cashFlow,
+      prevHealthScore,
+      prevTotalRevenue,
+      prevActiveCustomers,
+      prevMonthlyExpenses,
+      prevCashFlow,
+      financialScore,
+      inventoryScore,
+      customerScore,
+      growthScore,
+      operationalScore,
+      confidenceScore,
+      prevFinancialScore,
+      prevInventoryScore,
+      prevCustomerScore,
+      prevGrowthScore,
+      prevOperationalScore,
+      businessGrade,
       documents,
+      analysisMode,
+      selectedMonth,
+      selectedYear,
+      aiContext,
+      setAnalysisMode,
+      setSelectedMonth,
+      setSelectedYear,
       addDocument,
       updateDocumentStatus,
-      updateMetricsFromDocument
+      updateMetricsFromDocument,
+      removeDocument,
+      generateSnapshot
     }}>
       {children}
     </BusinessDataContext.Provider>
   );
 };
+

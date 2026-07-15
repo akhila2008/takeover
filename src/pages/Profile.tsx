@@ -1,19 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Save, Building2, ShoppingCart, Code, Briefcase, Landmark, Target, TrendingUp, Shield, Rocket } from 'lucide-react';
 import styles from './Profile.module.css';
+import { supabase } from '../lib/supabaseClient';
 
 export const Profile: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  
   const [formData, setFormData] = useState({
-    companyName: 'Acme Corp',
-    industry: 'Technology',
-    businessType: 'SaaS',
-    scale: 'Mid-Market',
-    goals: ['Hyper-Growth', 'Maximize Profit']
+    companyName: '',
+    industry: '',
+    businessType: '',
+    scale: '',
+    goals: [] as string[]
   });
+  
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('business_profiles')
+          .select('*')
+          .eq('id', 'default')
+          .single();
+          
+        if (data && !error) {
+          setFormData({
+            companyName: data.company_name || '',
+            industry: data.industry || '',
+            businessType: data.business_type || '',
+            scale: data.scale || '',
+            goals: data.goals || []
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load profile from Supabase', err);
+        // Fallback to local storage
+        const saved = localStorage.getItem('takeover_business_profile');
+        if (saved) setFormData(JSON.parse(saved));
+      }
+    };
+    
+    fetchProfile();
+  }, []);
 
   const businessTypes = [
     { id: 'SaaS', icon: <Code size={24} />, label: 'SaaS / Software' },
@@ -47,15 +76,29 @@ export const Profile: React.FC = () => {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    // Mock API call
-    setTimeout(() => {
-      setIsSaving(false);
-      setShowSuccess(true);
-      window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Business Profile successfully updated and synced with AI.' }));
-      setTimeout(() => setShowSuccess(false), 3000);
-    }, 1200);
+    // Persist to local storage as backup
+    localStorage.setItem('takeover_business_profile', JSON.stringify(formData));
+    
+    // Save to Supabase
+    try {
+      await supabase.from('business_profiles').upsert({
+        id: 'default',
+        company_name: formData.companyName,
+        industry: formData.industry,
+        business_type: formData.businessType,
+        scale: formData.scale,
+        goals: formData.goals
+      }, { onConflict: 'id' });
+    } catch (err) {
+      console.error('Failed to save to Supabase', err);
+    }
+    
+    setIsSaving(false);
+    setShowSuccess(true);
+    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Business Profile successfully updated and synced with AI.' }));
+    setTimeout(() => setShowSuccess(false), 3000);
   };
 
   return (
@@ -95,6 +138,7 @@ export const Profile: React.FC = () => {
                 type="text" 
                 className={styles.input} 
                 value={formData.companyName}
+                placeholder="Enter company name"
                 onChange={e => setFormData({...formData, companyName: e.target.value})}
               />
             </div>
@@ -104,6 +148,7 @@ export const Profile: React.FC = () => {
                 type="text" 
                 className={styles.input} 
                 value={formData.industry}
+                placeholder="e.g. Technology, Retail, etc."
                 onChange={e => setFormData({...formData, industry: e.target.value})}
               />
             </div>

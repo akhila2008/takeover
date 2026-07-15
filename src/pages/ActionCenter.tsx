@@ -12,7 +12,12 @@ interface Task {
   type: 'AI Suggestion' | 'Manual' | 'Automated';
 }
 
+import { useBusinessData } from '../context/BusinessDataContext';
+
 export const ActionCenter: React.FC = () => {
+  const { documents } = useBusinessData();
+  const hasData = documents.length > 0;
+
   const [suggestedTasks] = useState<Task[]>([
     {
       id: 'task-1',
@@ -113,40 +118,47 @@ export const ActionCenter: React.FC = () => {
         </div>
       </header>
 
-      <div className={styles.kanbanBoard}>
-        {/* Column 1: Suggested */}
-        <div className={styles.column}>
-          <div className={styles.columnHeader}>
-            <h2>AI Suggested</h2>
-            <span className={styles.countBadge}>{suggestedTasks.length}</span>
-          </div>
-          <div className={styles.taskList}>
-            {suggestedTasks.map(t => renderTaskCard(t, 'suggested'))}
-          </div>
+      {!hasData ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+          <p style={{ fontSize: '1.2rem', marginBottom: '16px' }}>No business data detected.</p>
+          <p>Please upload your financial documents in the Document Intel hub to generate AI tasks and execution plans.</p>
         </div>
+      ) : (
+        <div className={styles.kanbanBoard}>
+          {/* Column 1: Suggested */}
+          <div className={styles.column}>
+            <div className={styles.columnHeader}>
+              <h2>AI Suggested</h2>
+              <span className={styles.countBadge}>{suggestedTasks.length}</span>
+            </div>
+            <div className={styles.taskList}>
+              {suggestedTasks.map(t => renderTaskCard(t, 'suggested'))}
+            </div>
+          </div>
 
-        {/* Column 2: In Execution */}
-        <div className={styles.column}>
-          <div className={styles.columnHeader}>
-            <h2 style={{ color: 'var(--accent-info)' }}>In Execution</h2>
-            <span className={styles.countBadge} style={{ background: 'rgba(59, 130, 246, 0.2)', color: 'var(--accent-info)' }}>{activeTasks.length}</span>
+          {/* Column 2: In Execution */}
+          <div className={styles.column}>
+            <div className={styles.columnHeader}>
+              <h2 style={{ color: 'var(--accent-info)' }}>In Execution</h2>
+              <span className={styles.countBadge} style={{ background: 'rgba(59, 130, 246, 0.2)', color: 'var(--accent-info)' }}>{activeTasks.length}</span>
+            </div>
+            <div className={styles.taskList}>
+              {activeTasks.map(t => renderTaskCard(t, 'active'))}
+            </div>
           </div>
-          <div className={styles.taskList}>
-            {activeTasks.map(t => renderTaskCard(t, 'active'))}
-          </div>
-        </div>
 
-        {/* Column 3: Completed */}
-        <div className={styles.column}>
-          <div className={styles.columnHeader}>
-            <h2 style={{ color: 'var(--text-secondary)' }}>Completed</h2>
-            <span className={styles.countBadge} style={{ background: 'rgba(255, 255, 255, 0.1)' }}>{completedTasks.length}</span>
-          </div>
-          <div className={styles.taskList}>
-            {completedTasks.map(t => renderTaskCard(t, 'completed'))}
+          {/* Column 3: Completed */}
+          <div className={styles.column}>
+            <div className={styles.columnHeader}>
+              <h2 style={{ color: 'var(--text-secondary)' }}>Completed</h2>
+              <span className={styles.countBadge} style={{ background: 'rgba(255, 255, 255, 0.1)' }}>{completedTasks.length}</span>
+            </div>
+            <div className={styles.taskList}>
+              {completedTasks.map(t => renderTaskCard(t, 'completed'))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

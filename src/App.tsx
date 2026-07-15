@@ -13,6 +13,7 @@ import { Profile } from './pages/Profile';
 
 import { BusinessDataProvider } from './context/BusinessDataContext';
 import { DocumentIntel } from './pages/DocumentIntel';
+import { BusinessHistory } from './pages/BusinessHistory';
 
 function App() {
   const [activePage, setActivePage] = useState('executive-briefing');
@@ -39,6 +40,8 @@ function App() {
         return <Profile />;
       case 'document-intel':
         return <DocumentIntel />;
+      case 'business-history':
+        return <BusinessHistory />;
       default:
         return <UniversalModule title={prettyTitle} />;
     }

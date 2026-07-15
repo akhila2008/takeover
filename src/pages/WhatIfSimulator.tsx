@@ -3,20 +3,34 @@ import { motion } from 'framer-motion';
 import { Sliders, TrendingUp, DollarSign, Users, AlertTriangle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import styles from './WhatIfSimulator.module.css';
-
-const baseData = [
-  { month: 'Jan', revenue: 4000, profit: 2400 },
-  { month: 'Feb', revenue: 3000, profit: 1398 },
-  { month: 'Mar', revenue: 2000, profit: 9800 },
-  { month: 'Apr', revenue: 2780, profit: 3908 },
-  { month: 'May', revenue: 1890, profit: 4800 },
-  { month: 'Jun', revenue: 2390, profit: 3800 },
-];
+import { useBusinessData } from '../context/BusinessDataContext';
 
 export const WhatIfSimulator: React.FC = () => {
+  const { totalRevenue, monthlyExpenses, documents } = useBusinessData();
+  const hasData = documents.length > 0;
   const [priceMultiplier, setPriceMultiplier] = useState(1);
   const [marketingBudget, setMarketingBudget] = useState(1);
   const [staffing, setStaffing] = useState(1);
+
+  // Generate dynamic base data based on real context metrics
+  const avgMonthlyRev = totalRevenue / 12;
+  const avgMonthlyProfit = (totalRevenue - monthlyExpenses) / 12;
+
+  const baseData = hasData ? [
+    { month: 'Month 1', revenue: avgMonthlyRev * 0.9, profit: avgMonthlyProfit * 0.8 },
+    { month: 'Month 2', revenue: avgMonthlyRev * 0.95, profit: avgMonthlyProfit * 0.9 },
+    { month: 'Month 3', revenue: avgMonthlyRev, profit: avgMonthlyProfit },
+    { month: 'Month 4', revenue: avgMonthlyRev * 1.05, profit: avgMonthlyProfit * 1.1 },
+    { month: 'Month 5', revenue: avgMonthlyRev * 1.1, profit: avgMonthlyProfit * 1.15 },
+    { month: 'Month 6', revenue: avgMonthlyRev * 1.2, profit: avgMonthlyProfit * 1.25 },
+  ] : [
+    { month: 'Month 1', revenue: 0, profit: 0 },
+    { month: 'Month 2', revenue: 0, profit: 0 },
+    { month: 'Month 3', revenue: 0, profit: 0 },
+    { month: 'Month 4', revenue: 0, profit: 0 },
+    { month: 'Month 5', revenue: 0, profit: 0 },
+    { month: 'Month 6', revenue: 0, profit: 0 },
+  ];
 
   // Generate simulated future data based on sliders
   const simulatedData = baseData.map(d => ({
@@ -125,7 +139,7 @@ export const WhatIfSimulator: React.FC = () => {
               <DollarSign className={styles.metricIcon} style={{ color: 'var(--accent-success)' }} />
               <div className={styles.metricContent}>
                 <span className={styles.metricLabel}>Projected Revenue</span>
-                <span className={styles.metricValue}>${expectedRevenue.toLocaleString()}</span>
+                <span className={styles.metricValue}>₹{expectedRevenue.toLocaleString()}</span>
               </div>
             </motion.div>
             
@@ -138,7 +152,7 @@ export const WhatIfSimulator: React.FC = () => {
               <TrendingUp className={styles.metricIcon} style={{ color: 'var(--accent-info)' }} />
               <div className={styles.metricContent}>
                 <span className={styles.metricLabel}>Projected Profit</span>
-                <span className={styles.metricValue}>${expectedProfit.toLocaleString()}</span>
+                <span className={styles.metricValue}>₹{expectedProfit.toLocaleString()}</span>
               </div>
             </motion.div>
 

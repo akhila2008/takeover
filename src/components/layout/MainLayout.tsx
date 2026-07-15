@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { TimeFilterBar } from './TimeFilterBar';
 import { CommandPalette } from '../CommandPalette';
 import styles from './MainLayout.module.css';
 
@@ -37,6 +38,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, activePage, se
       
       <div className={`${styles.mainContent} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
         <Topbar onNavigate={setActivePage} />
+        <TimeFilterBar onNavigate={setActivePage} />
         <main className={styles.pageContent}>
           {children}
         </main>
