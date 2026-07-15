@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, DollarSign, Users, Square, Play, TrendingUp } from 'lucide-react';
+import { Activity, IndianRupee, Users, Square, Play, TrendingUp } from 'lucide-react';
 import styles from './ExecutiveBriefing.module.css';
 import { useBusinessData } from '../context/BusinessDataContext';
 
@@ -22,6 +22,8 @@ interface Props {
 
 export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
   const { 
+    totalRevenue, cashFlow, activeCustomers, 
+    prevTotalRevenue, prevCashFlow, prevActiveCustomers,
     analysisMode, selectedMonth, selectedYear, aiContext
   } = useBusinessData();
   const hasData = aiContext !== null;
@@ -94,6 +96,20 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
     };
   }, []);
 
+  const calculateTrend = (current: number, prev: number) => {
+    if (prev === 0) return { value: 0, text: 'No prev data', isPositive: true };
+    const diff = ((current - prev) / prev) * 100;
+    return {
+      value: Math.abs(diff).toFixed(1),
+      text: `${diff >= 0 ? '↑' : '↓'} ${Math.abs(diff).toFixed(1)}% vs prev period`,
+      isPositive: diff >= 0
+    };
+  };
+
+  const revenueTrend = calculateTrend(totalRevenue, prevTotalRevenue);
+  const profitTrend = calculateTrend(cashFlow, prevCashFlow);
+  const customersTrend = calculateTrend(activeCustomers, prevActiveCustomers);
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -123,63 +139,78 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
         </p>
       </motion.div>
 
-      {/* ROW 1: KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-        <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.1 }}>
-          <div className={styles.metricHeader}>
-            <DollarSign className={styles.metricIcon} style={{ color: 'var(--accent-info)' }} />
-            <span className={styles.metricLabel}>Total Revenue (YTD)</span>
+      {!hasData ? (
+        <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', marginTop: '24px' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>
+            No data found for the selected period. Please upload documents in Document Intel for {selectedMonth} {selectedYear} to unlock the Executive Briefing.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* ROW 1: KPIs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+            <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.1 }}>
+              <div className={styles.metricHeader}>
+                <IndianRupee className={styles.metricIcon} style={{ color: 'var(--accent-info)' }} />
+                <span className={styles.metricLabel}>Total Revenue</span>
+              </div>
+              <div className={styles.metricValue}>{formatCurrency(totalRevenue)}</div>
+              <div className={styles.metricTrend} style={{ color: revenueTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
+                {revenueTrend.text}
+              </div>
+            </motion.div>
+
+            <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2 }}>
+              <div className={styles.metricHeader}>
+                <TrendingUp className={styles.metricIcon} style={{ color: 'var(--accent-success)' }} />
+                <span className={styles.metricLabel}>Net Profit</span>
+              </div>
+              <div className={styles.metricValue}>{formatCurrency(cashFlow)}</div>
+              <div className={styles.metricTrend} style={{ color: profitTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
+                {profitTrend.text}
+              </div>
+            </motion.div>
+
+            <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.3 }}>
+              <div className={styles.metricHeader}>
+                <Users className={styles.metricIcon} style={{ color: '#a855f7' }} />
+                <span className={styles.metricLabel}>Active Customers</span>
+              </div>
+              <div className={styles.metricValue}>{activeCustomers.toLocaleString()}</div>
+              <div className={styles.metricTrend} style={{ color: customersTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
+                {customersTrend.text}
+              </div>
+            </motion.div>
+
+            <BusinessHealthGauge />
           </div>
-          <div className={styles.metricValue}>₹842,000</div>
-          <div className={styles.metricTrend} style={{ color: 'var(--accent-success)' }}>↑ 12.4% vs prev year</div>
-        </motion.div>
 
-        <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2 }}>
-          <div className={styles.metricHeader}>
-            <TrendingUp className={styles.metricIcon} style={{ color: 'var(--accent-success)' }} />
-            <span className={styles.metricLabel}>Net Profit (YTD)</span>
+          {/* ROW 2: Revenue Trend & Profit vs Expenses */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+            <RevenueTrendChart />
+            <ProfitExpenseChart />
           </div>
-          <div className={styles.metricValue}>₹348,000</div>
-          <div className={styles.metricTrend} style={{ color: 'var(--accent-success)' }}>↑ 8.2% vs prev year</div>
-        </motion.div>
 
-        <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.3 }}>
-          <div className={styles.metricHeader}>
-            <Users className={styles.metricIcon} style={{ color: '#a855f7' }} />
-            <span className={styles.metricLabel}>Active Customers</span>
+          {/* ROW 3: Sales Growth, Inventory & Revenue Sources */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+            <SalesGrowthChart />
+            <InventoryStatusChart />
+            <RevenueSourcesChart />
           </div>
-          <div className={styles.metricValue}>4,285</div>
-          <div className={styles.metricTrend} style={{ color: 'var(--accent-success)' }}>↑ 15.3% vs prev year</div>
-        </motion.div>
 
-        <BusinessHealthGauge />
-      </div>
+          {/* ROW 4: Top Products & Customer Acquisition */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+            <TopProductsChart />
+            <CustomerAcquisitionChart />
+          </div>
 
-      {/* ROW 2: Revenue Trend & Profit vs Expenses */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-        <RevenueTrendChart />
-        <ProfitExpenseChart />
-      </div>
-
-      {/* ROW 3: Sales Growth, Inventory & Revenue Sources */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-        <SalesGrowthChart />
-        <InventoryStatusChart />
-        <RevenueSourcesChart />
-      </div>
-
-      {/* ROW 4: Top Products & Customer Acquisition */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-        <TopProductsChart />
-        <CustomerAcquisitionChart />
-      </div>
-
-      {/* ROW 5: Cash Flow & Forecast */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-        <CashFlowChart />
-        <ForecastChart />
-      </div>
-
+          {/* ROW 5: Cash Flow & Forecast */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+            <CashFlowChart />
+            <ForecastChart />
+          </div>
+        </>
+      )}
     </div>
   );
 };
