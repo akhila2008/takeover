@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Send, Bot, User, BarChart2, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import styles from './AiCeoMode.module.css';
 import { useBusinessData } from '../context/BusinessDataContext';
+import { Dropdown } from '../components/ui/Dropdown';
 
 interface Message {
   id: string;
@@ -314,16 +315,13 @@ IMPORTANT: You must provide your entire response translated into the following l
           <h1 className="gradient-text" style={{ fontSize: '2.5rem', marginBottom: '8px' }}>AI CEO Mode</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Conversational intelligence and strategy.</p>
         </div>
-        <select 
-          className={styles.languageSelect}
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          title="Select AI Language"
-        >
-          {languages.map(lang => (
-             <option key={lang.code} value={lang.code}>{lang.name}</option>
-          ))}
-        </select>
+        <div style={{ width: '160px' }}>
+          <Dropdown
+            value={language}
+            onChange={(val) => setLanguage(val as string)}
+            options={languages.map(lang => ({ value: lang.code, label: lang.name }))}
+          />
+        </div>
       </header>
 
       <div className={`glass-panel ${styles.chatInterface}`}>

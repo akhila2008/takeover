@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, ChevronLeft, ChevronRight, History } from 'lucide-react';
 import { useBusinessData } from '../../context/BusinessDataContext';
+import { Dropdown } from '../ui/Dropdown';
 import styles from './TimeFilterBar.module.css';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -70,33 +71,27 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
           <Calendar size={16} className={styles.calendarIcon} />
           {analysisMode === 'Monthly' ? (
             <div className={styles.selectGroup}>
-              <select 
+              <Dropdown 
                 value={selectedMonth} 
-                onChange={e => setSelectedMonth(e.target.value)}
-                className={styles.periodSelect}
-              >
-                {MONTHS.map((m, index) => {
+                onChange={val => setSelectedMonth(val as string)}
+                options={MONTHS.map((m, index) => {
                   const isFutureMonth = selectedYear === currentYear && index > currentMonthIndex;
-                  return !isFutureMonth ? <option key={m} value={m}>{m}</option> : null;
-                })}
-              </select>
-              <select 
+                  return isFutureMonth ? null : { value: m, label: m };
+                }).filter(Boolean) as { value: string, label: string }[]}
+              />
+              <Dropdown 
                 value={selectedYear} 
-                onChange={e => setSelectedYear(parseInt(e.target.value))}
-                className={styles.periodSelect}
-              >
-                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
+                onChange={val => setSelectedYear(val as number)}
+                options={YEARS.map(y => ({ value: y, label: y.toString() }))}
+              />
             </div>
           ) : (
             <div className={styles.selectGroup}>
-              <select 
+              <Dropdown 
                 value={selectedYear} 
-                onChange={e => setSelectedYear(parseInt(e.target.value))}
-                className={styles.periodSelect}
-              >
-                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
+                onChange={val => setSelectedYear(val as number)}
+                options={YEARS.map(y => ({ value: y, label: y.toString() }))}
+              />
               <span>Overview</span>
             </div>
           )}

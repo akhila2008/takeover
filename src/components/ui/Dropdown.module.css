@@ -1,0 +1,138 @@
+.dropdownContainer {
+  position: relative;
+  display: inline-block;
+  min-width: 140px;
+  user-select: none;
+}
+
+.dropdownHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: rgba(31, 41, 55, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+  color: white;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  backdrop-filter: blur(10px);
+}
+
+.dropdownHeader:hover, .dropdownHeader:focus-visible {
+  border-color: #8b5cf6;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+  background: rgba(45, 55, 72, 0.9);
+  outline: none;
+}
+
+.headerText {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  color: #a78bfa;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  min-width: max-content;
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 12px;
+  padding: 0.5rem;
+  z-index: 50;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(139, 92, 246, 0.1);
+  backdrop-filter: blur(16px);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+/* Custom Scrollbar for Menu */
+.dropdownMenu::-webkit-scrollbar {
+  width: 6px;
+}
+.dropdownMenu::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dropdownMenu::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 10px;
+}
+.dropdownMenu::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #d1d5db;
+  font-size: 0.9rem;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+
+.menuItem:last-child {
+  margin-bottom: 0;
+}
+
+.menuItem:hover, .menuItem.focused {
+  background: rgba(139, 92, 246, 0.15);
+  color: #fff;
+  outline: none;
+}
+
+.menuItem.selected {
+  background: rgba(139, 92, 246, 0.25);
+  color: #fff;
+  font-weight: 500;
+}
+
+.menuItemContent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 1;
+}
+
+.checkIcon {
+  color: #34d399; /* Cyan/Teal accent for checkmark */
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+/* Left accent bar on hover/focus */
+.menuItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #34d399;
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+  transform-origin: center;
+}
+
+.menuItem:hover::before, .menuItem.focused::before, .menuItem.selected::before {
+  transform: scaleY(1);
+}

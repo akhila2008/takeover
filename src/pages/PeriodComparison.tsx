@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { GitCompare, DollarSign, Activity, TrendingUp, ShieldAlert } from 'lucide-react';
 import { useBusinessData } from '../context/BusinessDataContext';
 import { generateIntelligenceContext } from '../lib/IntelligenceEngine';
+import { Dropdown } from '../components/ui/Dropdown';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import styles from './PeriodComparison.module.css';
 
@@ -47,13 +48,6 @@ export const PeriodComparison: React.FC = () => {
 
   const formatCurrency = (val: number) => `₹${val.toLocaleString()}`;
 
-  const renderMonthOptions = (selectedYear: number) => {
-    return MONTHS.map((m, index) => {
-      const isFutureMonth = selectedYear === currentYear && index > currentMonthIndex;
-      return !isFutureMonth ? <option key={m} value={m}>{m}</option> : null;
-    });
-  };
-
   if (!contextA || !contextB) {
     return (
       <div className={styles.container}>
@@ -82,12 +76,19 @@ export const PeriodComparison: React.FC = () => {
         <div className={styles.periodSelector}>
           <label>Period A (Baseline)</label>
           <div className={styles.selectGroup}>
-            <select value={monthA} onChange={e => setMonthA(e.target.value)}>
-              {renderMonthOptions(yearA)}
-            </select>
-            <select value={yearA} onChange={e => setYearA(parseInt(e.target.value))}>
-              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
+            <Dropdown 
+              value={monthA} 
+              onChange={val => setMonthA(val as string)}
+              options={MONTHS.map((m, index) => {
+                const isFutureMonth = yearA === currentYear && index > currentMonthIndex;
+                return isFutureMonth ? null : { value: m, label: m };
+              }).filter(Boolean) as { value: string, label: string }[]}
+            />
+            <Dropdown 
+              value={yearA} 
+              onChange={val => setYearA(val as number)}
+              options={YEARS.map(y => ({ value: y, label: y.toString() }))}
+            />
           </div>
         </div>
         
@@ -96,12 +97,19 @@ export const PeriodComparison: React.FC = () => {
         <div className={styles.periodSelector}>
           <label>Period B (Comparison)</label>
           <div className={styles.selectGroup}>
-            <select value={monthB} onChange={e => setMonthB(e.target.value)}>
-              {renderMonthOptions(yearB)}
-            </select>
-            <select value={yearB} onChange={e => setYearB(parseInt(e.target.value))}>
-              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
+            <Dropdown 
+              value={monthB} 
+              onChange={val => setMonthB(val as string)}
+              options={MONTHS.map((m, index) => {
+                const isFutureMonth = yearB === currentYear && index > currentMonthIndex;
+                return isFutureMonth ? null : { value: m, label: m };
+              }).filter(Boolean) as { value: string, label: string }[]}
+            />
+            <Dropdown 
+              value={yearB} 
+              onChange={val => setYearB(val as number)}
+              options={YEARS.map(y => ({ value: y, label: y.toString() }))}
+            />
           </div>
         </div>
       </div>
