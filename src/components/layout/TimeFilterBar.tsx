@@ -4,7 +4,9 @@ import { useBusinessData } from '../../context/BusinessDataContext';
 import styles from './TimeFilterBar.module.css';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const currentYear = new Date().getFullYear();
+const nowIST = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+const currentYear = nowIST.getFullYear();
+const currentMonthIndex = nowIST.getMonth();
 const YEARS = Array.from({ length: currentYear - 2020 + 1 }, (_, i) => 2020 + i);
 
 interface Props {
@@ -26,7 +28,15 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
 
   const handleNextMonth = () => {
     const currentIndex = MONTHS.indexOf(selectedMonth);
+    
+    // Prevent going into the future if we're in the current year
+    if (selectedYear === currentYear && currentIndex >= currentMonthIndex) {
+      return;
+    }
+
     if (currentIndex === 11) {
+      // Prevent going into a future year
+      if (selectedYear >= currentYear) return;
       setSelectedMonth('January');
       setSelectedYear(selectedYear + 1);
     } else {
@@ -65,7 +75,10 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
                 onChange={e => setSelectedMonth(e.target.value)}
                 className={styles.periodSelect}
               >
-                {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                {MONTHS.map((m, index) => {
+                  const isFutureMonth = selectedYear === currentYear && index > currentMonthIndex;
+                  return !isFutureMonth ? <option key={m} value={m}>{m}</option> : null;
+                })}
               </select>
               <select 
                 value={selectedYear} 
@@ -89,7 +102,19 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
           )}
         </div>
         
-        <button className={styles.navBtn} onClick={analysisMode === 'Monthly' ? handleNextMonth : () => setSelectedYear(selectedYear + 1)}>
+        <button 
+          className={styles.navBtn} 
+          onClick={
+            analysisMode === 'Monthly' 
+              ? handleNextMonth 
+              : () => {
+                  if (selectedYear < currentYear) {
+                    setSelectedYear(selectedYear + 1);
+                  }
+                }
+          }
+          style={{ opacity: (analysisMode === 'Monthly' && selectedYear === currentYear && MONTHS.indexOf(selectedMonth) >= currentMonthIndex) || (analysisMode === 'Annual' && selectedYear >= currentYear) ? 0.3 : 1, cursor: (analysisMode === 'Monthly' && selectedYear === currentYear && MONTHS.indexOf(selectedMonth) >= currentMonthIndex) || (analysisMode === 'Annual' && selectedYear >= currentYear) ? 'not-allowed' : 'pointer' }}
+        >
           <ChevronRight size={18} />
         </button>
       </div>

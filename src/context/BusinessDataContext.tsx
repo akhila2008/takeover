@@ -53,6 +53,8 @@ interface BusinessDataState {
   generateSnapshot: () => void;
 }
 
+const nowIST = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+
 const defaultState: BusinessDataState = {
   healthScore: 0,
   totalRevenue: 0,
@@ -78,8 +80,8 @@ const defaultState: BusinessDataState = {
   businessGrade: 'Critical',
   documents: [],
   analysisMode: 'Monthly',
-  selectedMonth: new Date().toLocaleString('default', { month: 'long' }),
-  selectedYear: new Date().getFullYear(),
+  selectedMonth: nowIST.toLocaleString('default', { month: 'long' }),
+  selectedYear: nowIST.getFullYear(),
   aiContext: null,
   setAnalysisMode: () => {},
   setSelectedMonth: () => {},
