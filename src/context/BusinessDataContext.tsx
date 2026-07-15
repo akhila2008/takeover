@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { generateIntelligenceContext } from '../lib/IntelligenceEngine';
@@ -171,7 +171,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [businessGrade, setBusinessGrade] = useState(defaultState.businessGrade);
 
 
-  const [aiContext, setAiContext] = useState<AIContextObject | null>(defaultState.aiContext);
+
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Fetch initial data from Supabase
