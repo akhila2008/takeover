@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Bot, User, BarChart2, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { Send, Bot, User, BarChart2, Mic, MicOff, Volume2, VolumeX, Settings, X } from 'lucide-react';
 import styles from './AiCeoMode.module.css';
 import { useBusinessData } from '../context/BusinessDataContext';
 import { Dropdown } from '../components/ui/Dropdown';
@@ -35,6 +35,9 @@ export const AiCeoMode: React.FC = () => {
   const [language, setLanguage] = useState('en-US');
   const [isTyping, setIsTyping] = useState(false);
   
+  const [groqApiKey, setGroqApiKey] = useState<string>(() => localStorage.getItem('takeover_groq_api_key') || '');
+  const [showSettings, setShowSettings] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -50,6 +53,11 @@ export const AiCeoMode: React.FC = () => {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleSaveApiKey = (key: string) => {
+    setGroqApiKey(key);
+    localStorage.setItem('takeover_groq_api_key', key);
   };
 
   useEffect(() => {
@@ -209,35 +217,33 @@ IMPORTANT: You must provide your entire response translated into the following l
       messagesPayload.unshift({ role: 'system', content: systemPrompt });
       messagesPayload.push({ role: 'user', content: userText });
 
-      const response = await fetch(`http://localhost:11434/api/chat`, {
+      const url = groqApiKey ? 'https://api.groq.com/openai/v1/chat/completions' : 'http://localhost:11434/api/chat';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (groqApiKey) {
+        headers['Authorization'] = `Bearer ${groqApiKey}`;
+      }
+      
+      const bodyPayload = groqApiKey 
+        ? { model: 'llama3-8b-8192', messages: messagesPayload, stream: true }
+        : { model: 'llama3', messages: messagesPayload, stream: true };
+
+      const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          model: 'llama3', 
-          messages: messagesPayload,
-          stream: true
-        })
+        headers,
+        body: JSON.stringify(bodyPayload)
       });
       
       if (!response.ok) {
-        setIsTyping(false);
-        setMessages(prev => {
-          const exists = prev.some(msg => msg.id === aiMsgId);
-          const mockResponse = generateMockResponse(userText);
-          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: mockResponse }];
-          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: mockResponse } : msg);
-        });
-        return;
+        const errorText = await response.text();
+        console.error("API Error:", errorText);
+        throw new Error(groqApiKey ? "Groq API Failed" : "Ollama API Failed");
       }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder("utf-8");
       
       if (!reader) {
-        setIsTyping(false);
-        return;
+        throw new Error("No reader available");
       }
 
       let buffer = '';
@@ -255,25 +261,37 @@ IMPORTANT: You must provide your entire response translated into the following l
           if (!trimmedLine) continue;
           
           try {
-            const data = JSON.parse(trimmedLine);
-            if (data.message && data.message.content) {
-              let textChunk = data.message.content;
-              if (textChunk) {
-                // Strip markdown artifacts on the fly
-                textChunk = textChunk.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#/g, '');
-                setIsTyping(false);
-                setMessages(prev => {
-                  const exists = prev.some(msg => msg.id === aiMsgId);
-                  if (exists) {
-                    return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: msg.text + textChunk } : msg);
-                  } else {
-                    return [...prev, { id: aiMsgId, sender: 'ai', text: textChunk }];
-                  }
-                });
+            let textChunk = "";
+            
+            if (groqApiKey) {
+              if (trimmedLine === 'data: [DONE]') continue;
+              if (trimmedLine.startsWith('data: ')) {
+                const data = JSON.parse(trimmedLine.slice(6));
+                if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
+                  textChunk = data.choices[0].delta.content;
+                }
+              }
+            } else {
+              const data = JSON.parse(trimmedLine);
+              if (data.message && data.message.content) {
+                textChunk = data.message.content;
               }
             }
+            
+            if (textChunk) {
+              textChunk = textChunk.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#/g, '');
+              setIsTyping(false);
+              setMessages(prev => {
+                const exists = prev.some(msg => msg.id === aiMsgId);
+                if (exists) {
+                  return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: msg.text + textChunk } : msg);
+                } else {
+                  return [...prev, { id: aiMsgId, sender: 'ai', text: textChunk }];
+                }
+              });
+            }
           } catch (e) {
-            console.error('Error parsing Ollama chunk:', e);
+            console.warn('Error parsing chunk:', e);
           }
         }
       }
@@ -359,14 +377,46 @@ IMPORTANT: You must provide your entire response translated into the following l
           <h1 className="gradient-text" style={{ fontSize: '2.5rem', marginBottom: '8px' }}>AI CEO Mode</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Conversational intelligence and strategy.</p>
         </div>
-        <div style={{ width: '160px' }}>
-          <Dropdown
-            value={language}
-            onChange={(val) => setLanguage(val as string)}
-            options={languages.map(lang => ({ value: lang.code, label: lang.name }))}
-          />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '160px' }}>
+            <Dropdown
+              value={language}
+              onChange={(val) => setLanguage(val as string)}
+              options={languages.map(lang => ({ value: lang.code, label: lang.name }))}
+            />
+          </div>
+          <button 
+            className={styles.settingsBtn} 
+            onClick={() => setShowSettings(!showSettings)}
+            title="Configure AI API"
+          >
+            <Settings size={22} color={groqApiKey ? "var(--accent-success)" : "#9ca3af"} />
+          </button>
         </div>
       </header>
+
+      {showSettings && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className={styles.settingsPanel}
+        >
+          <div className={styles.settingsHeader}>
+            <h3>Cloud AI Integration (Groq + RAG)</h3>
+            <button onClick={() => setShowSettings(false)} className={styles.closeBtn}><X size={18} /></button>
+          </div>
+          <p>Enter your free Groq API key to unlock the true power of your AI CEO instead of using the mock offline demo. Your key is stored safely and locally in your browser.</p>
+          <div className={styles.inputGroup}>
+            <input 
+              type="password" 
+              placeholder="gsk_..." 
+              value={groqApiKey} 
+              onChange={(e) => handleSaveApiKey(e.target.value)} 
+              className={styles.apiKeyInput}
+            />
+          </div>
+        </motion.div>
+      )}
 
       <div className={`glass-panel ${styles.chatInterface}`}>
         <div className={styles.messagesArea}>
