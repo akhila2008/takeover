@@ -32,12 +32,17 @@ export const Profile: React.FC = () => {
             scale: data.scale || '',
             goals: data.goals || []
           });
+        } else {
+          throw new Error(error?.message || 'No data found in Supabase');
         }
       } catch (err) {
-        console.error('Failed to load profile from Supabase', err);
-        // Fallback to local storage
+        console.warn('Falling back to local storage for Business Profile.');
         const saved = localStorage.getItem('takeover_business_profile');
-        if (saved) setFormData(JSON.parse(saved));
+        if (saved) {
+          try {
+            setFormData(JSON.parse(saved));
+          } catch(e) {}
+        }
       }
     };
     
