@@ -200,6 +200,7 @@ CRITICAL RULES:
 3. You MUST NEVER calculate business health, scores, revenue, or metrics. You MUST ONLY explain the provided JSON object.
 4. NEVER invent risks, weaknesses, strengths, or inventory problems. If information is not in the JSON, say "Insufficient data".
 5. Every recommendation must be supported by the supplied metrics. Never contradict numerical values.
+6. ALL financial numbers in the data are in Indian Rupees (INR). You MUST ALWAYS use the ₹ symbol or the word "Rupees" when discussing money. Never use dollars or $.
 
 CURRENT BUSINESS INTELLIGENCE CONTEXT (STRICT TRUTH):
 ${JSON.stringify(aiContext || { status: 'No data' }, null, 2)}
