@@ -29,7 +29,12 @@ export interface AIContextObject {
   }
 }
 
-export const generateIntelligenceContext = (documents: UploadedDocument[], previousDocuments: UploadedDocument[]): AIContextObject | null => {
+export const generateIntelligenceContext = (
+  documents: UploadedDocument[], 
+  previousDocuments: UploadedDocument[],
+  selectedMonth: string,
+  selectedYear: number
+): AIContextObject | null => {
   if (documents.length === 0) return null;
 
   // 1. Business KPI Engine
@@ -42,7 +47,7 @@ export const generateIntelligenceContext = (documents: UploadedDocument[], previ
 
   // Deterministic generation based on docs
   documents.forEach(doc => {
-    const seedString = doc.name + (doc.month || '') + (doc.year || '');
+    const seedString = doc.name + selectedMonth + selectedYear;
     let hash = 0;
     for (let i = 0; i < seedString.length; i++) {
       hash = ((hash << 5) - hash) + seedString.charCodeAt(i);
@@ -68,7 +73,8 @@ export const generateIntelligenceContext = (documents: UploadedDocument[], previ
   });
 
   previousDocuments.forEach(doc => {
-     const seedString = doc.name + (doc.month || '') + (doc.year || '');
+     // Use a different seed for previous period to ensure it's different but deterministic
+     const seedString = doc.name + selectedMonth + (selectedYear - 1);
      let hash = 0;
      for (let i = 0; i < seedString.length; i++) {
        hash = ((hash << 5) - hash) + seedString.charCodeAt(i);
