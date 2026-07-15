@@ -46,6 +46,8 @@
   border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 16px;
   backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 100;
 }
 
 .periodSelector {
