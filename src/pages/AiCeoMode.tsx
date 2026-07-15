@@ -141,6 +141,29 @@ export const AiCeoMode: React.FC = () => {
   };
 
   const streamAiResponse = async (userText: string, chatHistory: Message[], aiMsgId: string) => {
+    const generateMockResponse = (input: string) => {
+      const lowerInput = input.toLowerCase();
+      if (lowerInput.includes('revenue') || lowerInput.includes('sales')) {
+        return "(Demo Mode) Revenue is trending positively this quarter, up 12% from last month. I recommend reallocating some budget to marketing to maintain this momentum.";
+      }
+      if (lowerInput.includes('expense') || lowerInput.includes('cost')) {
+        return "(Demo Mode) Operating expenses are slightly higher than projected due to increased software licensing costs. We should audit our tech stack next week.";
+      }
+      if (lowerInput.includes('customer') || lowerInput.includes('client')) {
+        return "(Demo Mode) Customer retention is at 92%. However, new customer acquisition has slowed. Let's look into a targeted ad campaign.";
+      }
+      if (lowerInput.includes('inventory') || lowerInput.includes('stock')) {
+        return "(Demo Mode) We have a potential stockout risk for 'Product X'. I recommend increasing the buffer stock by 15% immediately.";
+      }
+      const generalResponses = [
+        "(Demo Mode) That's a great question. Based on current metrics, our overall business health is strong, but we must stay vigilant on cash flow.",
+        "(Demo Mode) I'm analyzing the data... The trends suggest we should focus on optimizing operational efficiency this quarter.",
+        "(Demo Mode) According to the latest data pulse, we are on track to meet our annual targets, provided we keep expenses in check.",
+        "(Demo Mode) Our predictive models indicate steady growth. Is there a specific metric you'd like me to dive deeper into?"
+      ];
+      return generalResponses[Math.floor(Math.random() * generalResponses.length)];
+    };
+
     try {
       const systemPrompt = `You are an elite AI Business Executive Assistant.
 CRITICAL RULES:
@@ -165,29 +188,6 @@ IMPORTANT: You must provide your entire response translated into the following l
       // Prepend system prompt to the first user message, or insert it if missing.
       messagesPayload.unshift({ role: 'system', content: systemPrompt });
       messagesPayload.push({ role: 'user', content: userText });
-
-      const generateMockResponse = (input: string) => {
-        const lowerInput = input.toLowerCase();
-        if (lowerInput.includes('revenue') || lowerInput.includes('sales')) {
-          return "(Demo Mode) Revenue is trending positively this quarter, up 12% from last month. I recommend reallocating some budget to marketing to maintain this momentum.";
-        }
-        if (lowerInput.includes('expense') || lowerInput.includes('cost')) {
-          return "(Demo Mode) Operating expenses are slightly higher than projected due to increased software licensing costs. We should audit our tech stack next week.";
-        }
-        if (lowerInput.includes('customer') || lowerInput.includes('client')) {
-          return "(Demo Mode) Customer retention is at 92%. However, new customer acquisition has slowed. Let's look into a targeted ad campaign.";
-        }
-        if (lowerInput.includes('inventory') || lowerInput.includes('stock')) {
-          return "(Demo Mode) We have a potential stockout risk for 'Product X'. I recommend increasing the buffer stock by 15% immediately.";
-        }
-        const generalResponses = [
-          "(Demo Mode) That's a great question. Based on current metrics, our overall business health is strong, but we must stay vigilant on cash flow.",
-          "(Demo Mode) I'm analyzing the data... The trends suggest we should focus on optimizing operational efficiency this quarter.",
-          "(Demo Mode) According to the latest data pulse, we are on track to meet our annual targets, provided we keep expenses in check.",
-          "(Demo Mode) Our predictive models indicate steady growth. Is there a specific metric you'd like me to dive deeper into?"
-        ];
-        return generalResponses[Math.floor(Math.random() * generalResponses.length)];
-      };
 
       const response = await fetch(`http://localhost:11434/api/chat`, {
         method: 'POST',
