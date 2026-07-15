@@ -224,7 +224,7 @@ IMPORTANT: You must provide your entire response translated into the following l
       }
       
       const bodyPayload = groqApiKey 
-        ? { model: 'llama3-8b-8192', messages: messagesPayload, stream: true }
+        ? { model: 'llama-3.1-8b-instant', messages: messagesPayload, stream: true }
         : { model: 'llama3', messages: messagesPayload, stream: true };
 
       const response = await fetch(url, {
