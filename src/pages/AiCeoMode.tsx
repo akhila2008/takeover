@@ -322,14 +322,20 @@ IMPORTANT: You must provide your entire response translated into the following l
         }
 
       } catch (error: any) {
-        console.error("Ollama API Error:", error);
+        console.error("API Error:", error);
         setIsTyping(false);
         setMessages(prev => {
           const exists = prev.some(msg => msg.id === aiMsgId);
-          // Fallback dynamic mock response for demo purposes
-          const mockResponse = generateMockResponse(userText);
-          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: mockResponse }];
-          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: mockResponse } : msg);
+          
+          let errorResponse = "";
+          if (groqApiKey) {
+            errorResponse = `(Error) Groq API connection failed. Check your API key or console for details. Error: ${error.message}`;
+          } else {
+            errorResponse = generateMockResponse(userText);
+          }
+          
+          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: errorResponse }];
+          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: errorResponse } : msg);
         });
       }
   };
