@@ -220,7 +220,7 @@ IMPORTANT: You must provide your entire response translated into the following l
       const url = groqApiKey ? 'https://api.groq.com/openai/v1/chat/completions' : 'http://localhost:11434/api/chat';
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (groqApiKey) {
-        headers['Authorization'] = `Bearer ${groqApiKey}`;
+        headers['Authorization'] = `Bearer ${groqApiKey.trim()}`;
       }
       
       const bodyPayload = groqApiKey 
@@ -234,9 +234,15 @@ IMPORTANT: You must provide your entire response translated into the following l
       });
       
       if (!response.ok) {
-        const errorText = await response.text();
+        let errorText = await response.text();
+        try {
+           const parsed = JSON.parse(errorText);
+           if (parsed.error && parsed.error.message) {
+              errorText = parsed.error.message;
+           }
+        } catch(e) {}
         console.error("API Error:", errorText);
-        throw new Error(groqApiKey ? "Groq API Failed" : "Ollama API Failed");
+        throw new Error(groqApiKey ? `Groq API Failed: ${errorText}` : "Ollama API Failed");
       }
 
       const reader = response.body?.getReader();
