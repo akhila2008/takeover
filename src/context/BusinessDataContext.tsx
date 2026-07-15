@@ -296,54 +296,67 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
     // We no longer take a fileName parameter. Instead, we recalculate everything based on the current analyzed documents.
   };
 
-  // Recalculate metrics whenever documents change
-  useEffect(() => {
-    if (!isLoaded) return;
-    
-    // Strictly filter documents to the period they were uploaded in.
-    const docsForPeriod = documents.filter(d => {
+  const docsForPeriod = useMemo(() => {
+    return documents.filter(d => {
       if (d.status !== 'analyzed') return false;
       if (analysisMode === 'Monthly') return d.month === selectedMonth && d.year === selectedYear;
       return d.year === selectedYear;
     });
+  }, [documents, analysisMode, selectedMonth, selectedYear]);
 
+  const { prevMonth, prevYear } = useMemo(() => {
     const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    let prevMonth = selectedMonth;
-    let prevYear = selectedYear;
+    let pMonth = selectedMonth;
+    let pYear = selectedYear;
     if (analysisMode === 'Monthly') {
       const currentIdx = MONTHS.indexOf(selectedMonth);
       if (currentIdx === 0) {
-        prevMonth = 'December';
-        prevYear = selectedYear - 1;
+        pMonth = 'December';
+        pYear = selectedYear - 1;
       } else {
-        prevMonth = MONTHS[currentIdx - 1];
+        pMonth = MONTHS[currentIdx - 1];
       }
     } else {
-      prevYear = selectedYear - 1;
+      pYear = selectedYear - 1;
     }
+    return { prevMonth: pMonth, prevYear: pYear };
+  }, [analysisMode, selectedMonth, selectedYear]);
 
-    const prevDocsForPeriod = documents.filter(d => {
+  const prevDocsForPeriod = useMemo(() => {
+    return documents.filter(d => {
       if (d.status !== 'analyzed') return false;
       if (analysisMode === 'Monthly') return d.month === prevMonth && d.year === prevYear;
       return d.year === prevYear;
     });
+  }, [documents, analysisMode, prevMonth, prevYear]);
 
-    const context = generateIntelligenceContext(docsForPeriod, prevDocsForPeriod, selectedMonth, selectedYear);
-    setAiContext(context);
+  const aiContext = useMemo(() => {
+    if (!isLoaded) return null;
+    return generateIntelligenceContext(docsForPeriod, prevDocsForPeriod, selectedMonth, selectedYear);
+  }, [docsForPeriod, prevDocsForPeriod, selectedMonth, selectedYear, isLoaded]);
 
-    if (context) {
-      setTotalRevenue(context.revenue);
-      setMonthlyExpenses(context.expenses);
-      setActiveCustomers(context.averageRating * 100); // approximated for UI mapping
-      setCashFlow(context.cashFlow);
-      setHealthScore(context.healthScore); 
-      setFinancialScore(context.financialScore);
-      setInventoryScore(context.inventoryScore);
-      setCustomerScore(context.customerScore);
-      setGrowthScore(context.growthScore);
-      setOperationalScore(context.operationsScore);
+  const prevContext = useMemo(() => {
+    if (!isLoaded) return null;
+    return generateIntelligenceContext(prevDocsForPeriod, [], prevMonth, prevYear);
+  }, [prevDocsForPeriod, prevMonth, prevYear, isLoaded]);
+
+  // Synchronize state with derived context when it changes
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    if (aiContext) {
+      setTotalRevenue(aiContext.revenue);
+      setMonthlyExpenses(aiContext.expenses);
+      setActiveCustomers(aiContext.averageRating * 100);
+      setCashFlow(aiContext.cashFlow);
+      setHealthScore(aiContext.healthScore);
+      setFinancialScore(aiContext.financialScore);
+      setInventoryScore(aiContext.inventoryScore);
+      setCustomerScore(aiContext.customerScore);
+      setGrowthScore(aiContext.growthScore);
+      setOperationalScore(aiContext.operationsScore);
       setConfidenceScore(Math.min(99, 40 + (docsForPeriod.length * 15)));
-      setBusinessGrade(context.grade);
+      setBusinessGrade(aiContext.grade);
     } else {
       setTotalRevenue(0);
       setMonthlyExpenses(0);
@@ -359,7 +372,6 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       setBusinessGrade('Critical');
     }
 
-    const prevContext = generateIntelligenceContext(prevDocsForPeriod, [], prevMonth, prevYear);
     if (prevContext) {
       setPrevTotalRevenue(prevContext.revenue);
       setPrevMonthlyExpenses(prevContext.expenses);
@@ -383,7 +395,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       setPrevGrowthScore(0);
       setPrevOperationalScore(0);
     }
-  }, [documents, isLoaded, analysisMode, selectedMonth, selectedYear]);
+  }, [aiContext, prevContext, isLoaded, docsForPeriod.length]);
   const removeDocument = async (id: string) => {
     setDocuments(prev => prev.filter(doc => doc.id !== id));
     // Delete from Supabase
