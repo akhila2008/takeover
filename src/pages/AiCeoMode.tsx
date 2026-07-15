@@ -232,9 +232,10 @@ IMPORTANT: You must provide your entire response translated into the following l
             console.error('Error parsing Ollama chunk:', e);
           }
         }
+      }
 
-        // --- STEP 7: AI Validation Layer ---
-        let finalResponseText = '';
+      // --- STEP 7: AI Validation Layer ---
+      let finalResponseText = '';
         setMessages(prev => {
           const msg = prev.find(m => m.id === aiMsgId);
           if (msg) finalResponseText = msg.text;
