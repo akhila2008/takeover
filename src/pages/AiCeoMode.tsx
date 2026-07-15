@@ -140,11 +140,8 @@ export const AiCeoMode: React.FC = () => {
   };
 
   const streamAiResponse = async (userText: string, chatHistory: Message[], aiMsgId: string) => {
-    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    
-    if (geminiKey && geminiKey !== 'YOUR_API_KEY_HERE') {
-      try {
-        const systemPrompt = `You are an elite AI Business Executive Assistant.
+    try {
+      const systemPrompt = `You are an elite AI Business Executive Assistant.
 CRITICAL RULES:
 1. Speak exactly like a real human having a direct conversation. Use a warm, natural, and highly realistic conversational tone. 
 2. DO NOT use ANY markdown formatting (no asterisks **, no hash tags #, no bullet points). Keep responses concise.
@@ -156,92 +153,83 @@ CURRENT BUSINESS INTELLIGENCE CONTEXT (STRICT TRUTH):
 ${JSON.stringify(aiContext || { status: 'No data' }, null, 2)}
 
 IMPORTANT: You must provide your entire response translated into the following language code: ${language}`;
-        
-        const contents = chatHistory
-          .filter(msg => msg.id !== '1' && msg.id !== aiMsgId && msg.text) 
-          .map((msg, index) => {
-            let text = msg.text;
-            if (index === 0 && msg.sender === 'user') {
-              text = `${systemPrompt}\n\nUser Question: ${text}`;
-            }
-            return {
-              role: msg.sender === 'ai' ? 'model' : 'user',
-              parts: [{ text }]
-            };
-          });
+      
+      const messagesPayload = chatHistory
+        .filter(msg => msg.id !== '1' && msg.id !== aiMsgId && msg.text) 
+        .map(msg => ({
+          role: msg.sender === 'ai' ? 'assistant' : 'user',
+          content: msg.text
+        }));
 
-        if (contents.length === 0) {
-           contents.push({ role: 'user', parts: [{ text: `${systemPrompt}\n\nUser Question: ${userText}` }] });
-        } else {
-           contents.push({ role: 'user', parts: [{ text: userText }] });
-        }
+      // Prepend system prompt to the first user message, or insert it if missing.
+      messagesPayload.unshift({ role: 'system', content: systemPrompt });
+      messagesPayload.push({ role: 'user', content: userText });
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-goog-api-key': geminiKey
-          },
-          body: JSON.stringify({ contents })
+      const response = await fetch(`http://localhost:11434/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          model: 'llama3', 
+          messages: messagesPayload,
+          stream: true
+        })
+      });
+      
+      if (!response.ok) {
+        setIsTyping(false);
+        setMessages(prev => {
+          const exists = prev.some(msg => msg.id === aiMsgId);
+          const errorMsg = `Ollama Error: Make sure Ollama is running and OLLAMA_ORIGINS="*" is set!`;
+          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: errorMsg }];
+          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: errorMsg } : msg);
         });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          setIsTyping(false);
-          setMessages(prev => {
-            const exists = prev.some(msg => msg.id === aiMsgId);
-            if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: `Gemini Error: ${errorData.error?.message || response.statusText}` }];
-            return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: `Gemini Error: ${errorData.error?.message || response.statusText}` } : msg);
-          });
-          return;
-        }
+        return;
+      }
 
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder("utf-8");
-        
-        if (!reader) {
-          setIsTyping(false);
-          return;
-        }
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder("utf-8");
+      
+      if (!reader) {
+        setIsTyping(false);
+        return;
+      }
 
-        let buffer = '';
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
           
-          buffer += decoder.decode(value, { stream: true });
-          
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-          
-          for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('data: ')) {
-              const dataStr = trimmedLine.slice(6);
-              if (dataStr === '[DONE]') continue;
-              try {
-                const data = JSON.parse(dataStr);
-                if (data.candidates && data.candidates[0].content) {
-                  let textChunk = data.candidates[0].content.parts[0].text;
-                  if (textChunk) {
-                    // Strip markdown artifacts on the fly to force a natural, raw text appearance
-                    textChunk = textChunk.replace(/\\*\\*/g, '').replace(/\\*/g, '').replace(/#/g, '');
-                    setIsTyping(false);
-                    setMessages(prev => {
-                      const exists = prev.some(msg => msg.id === aiMsgId);
-                      if (!exists) {
-                        return [...prev, { id: aiMsgId, sender: 'ai', text: textChunk }];
-                      }
-                      return prev.map(msg => 
-                        msg.id === aiMsgId ? { ...msg, text: msg.text + textChunk } : msg
-                      );
-                    });
+          try {
+            const data = JSON.parse(trimmedLine);
+            if (data.message && data.message.content) {
+              let textChunk = data.message.content;
+              if (textChunk) {
+                // Strip markdown artifacts on the fly
+                textChunk = textChunk.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#/g, '');
+                setIsTyping(false);
+                setMessages(prev => {
+                  const exists = prev.some(msg => msg.id === aiMsgId);
+                  if (exists) {
+                    return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: msg.text + textChunk } : msg);
+                  } else {
+                    return [...prev, { id: aiMsgId, sender: 'ai', text: textChunk }];
                   }
-                }
-              } catch (e) {
-                // Ignore partial JSON chunks
+                });
               }
             }
+          } catch (e) {
+            console.error('Error parsing Ollama chunk:', e);
           }
         }
 
