@@ -12,7 +12,7 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
   const { 
     documents, addDocument, updateDocumentStatus, 
     updateMetricsFromDocument, removeDocument, generateSnapshot,
-    selectedMonth, selectedYear, analysisMode
+    selectedMonth, selectedYear, analysisMode, isLoaded
   } = useBusinessData();
   const [dragActive, setDragActive] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -136,7 +136,12 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
         <div className={styles.sidebar}>
           <div className={styles.docList}>
             <h3><Database size={18} /> Processed Documents</h3>
-            {filteredDocs.length === 0 ? (
+            {!isLoaded ? (
+              <div className={styles.emptyState}>
+                <Loader2 size={16} className={styles.spinner} style={{ marginRight: 8, display: 'inline' }} />
+                Loading documents...
+              </div>
+            ) : filteredDocs.length === 0 ? (
               <div className={styles.emptyState}>
                 No documents uploaded for this period.
               </div>

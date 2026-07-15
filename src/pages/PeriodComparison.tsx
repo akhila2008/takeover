@@ -13,7 +13,7 @@ const currentMonthIndex = nowIST.getMonth();
 const YEARS = Array.from({ length: currentYear - 2020 + 1 }, (_, i) => 2020 + i);
 
 export const PeriodComparison: React.FC = () => {
-  const { documents } = useBusinessData();
+  const { documents, isLoaded } = useBusinessData();
   
   // Period A (default to current month)
   const [monthA, setMonthA] = useState(nowIST.toLocaleString('default', { month: 'long' }));
@@ -102,7 +102,14 @@ export const PeriodComparison: React.FC = () => {
         </div>
       </div>
 
-      {!contextA || !contextB ? (
+      {!isLoaded ? (
+        <div style={{ textAlign: 'center', padding: '40px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', marginTop: '24px' }}>
+          <p style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+            <Activity className="spinner" size={20} />
+            Loading comparison data...
+          </p>
+        </div>
+      ) : !contextA || !contextB ? (
         <div style={{ textAlign: 'center', padding: '40px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', marginTop: '24px' }}>
           <p style={{ color: 'var(--text-secondary)' }}>
             No data found for the selected periods. Please upload documents in Document Intel for {monthA} {yearA} or {monthB} {yearB}.

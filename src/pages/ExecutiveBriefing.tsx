@@ -24,7 +24,7 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
   const { 
     totalRevenue, cashFlow, activeCustomers, 
     prevTotalRevenue, prevCashFlow, prevActiveCustomers,
-    analysisMode, selectedMonth, selectedYear, aiContext
+    analysisMode, selectedMonth, selectedYear, aiContext, isLoaded
   } = useBusinessData();
   const hasData = aiContext !== null;
 
@@ -37,6 +37,7 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
 
   // Dynamic AI Text Generation
   const generateDynamicBriefing = () => {
+    if (!isLoaded) return "Synchronizing business intelligence data...";
     if (!hasData || !aiContext) return "Upload a document in Document Intel to generate a comprehensive AI Business Health analysis.";
     const periodStr = analysisMode === 'Monthly' ? `${selectedMonth} ${selectedYear}` : `Year ${selectedYear}`;
     let text = `${periodStr} analysis complete. Revenue reached ${formatCurrency(aiContext.revenue)} while operating expenses were ${formatCurrency(aiContext.expenses)}. `;
@@ -49,12 +50,17 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
     if (aiContext.recommendations.length > 0) {
       text += `Key recommendation: ${aiContext.recommendations[0]}`;
     }
+    
     return text;
   };
 
-  const summaryText = generateDynamicBriefing();
+  const [summaryText, setSummaryText] = useState(generateDynamicBriefing());
   const [displayedText, setDisplayedText] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    setSummaryText(generateDynamicBriefing());
+  }, [hasData, isLoaded, analysisMode, selectedMonth, selectedYear, aiContext]);
 
   useEffect(() => {
     setDisplayedText("");
@@ -139,7 +145,14 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
         </p>
       </motion.div>
 
-      {!hasData ? (
+      {!isLoaded ? (
+        <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', marginTop: '24px' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+            <Activity className="spinner" size={20} />
+            Loading business metrics from securely encrypted storage...
+          </p>
+        </div>
+      ) : !hasData ? (
         <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', marginTop: '24px' }}>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>
             No data found for the selected period. Please upload documents in Document Intel for {selectedMonth} {selectedYear} to unlock the Executive Briefing.

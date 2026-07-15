@@ -43,6 +43,7 @@ interface BusinessDataState {
   selectedMonth: string;
   selectedYear: number;
   aiContext: AIContextObject | null;
+  isLoaded: boolean;
   setAnalysisMode: (mode: 'Monthly' | 'Annual') => void;
   setSelectedMonth: (month: string) => void;
   setSelectedYear: (year: number) => void;
@@ -83,6 +84,7 @@ const defaultState: BusinessDataState = {
   selectedMonth: nowIST.toLocaleString('default', { month: 'long' }),
   selectedYear: nowIST.getFullYear(),
   aiContext: null,
+  isLoaded: false,
   setAnalysisMode: () => {},
   setSelectedMonth: () => {},
   setSelectedYear: () => {},
@@ -452,6 +454,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       selectedMonth,
       selectedYear,
       aiContext,
+      isLoaded,
       setAnalysisMode,
       setSelectedMonth,
       setSelectedYear,
