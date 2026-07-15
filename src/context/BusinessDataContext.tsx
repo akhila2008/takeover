@@ -95,27 +95,51 @@ const BusinessDataContext = createContext<BusinessDataState>(defaultState);
 
 export const useBusinessData = () => useContext(BusinessDataContext);
 
+const safelyGetLocalStorage = () => {
+  try {
+    const saved = localStorage.getItem('takeover_business_data');
+    if (!saved) return null;
+    return JSON.parse(saved);
+  } catch (e) {
+    console.error('Local storage corrupted, resetting to defaults.', e);
+    localStorage.removeItem('takeover_business_data');
+    return null;
+  }
+};
+
 export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [healthScore, setHealthScore] = useState(() => {
-    const saved = localStorage.getItem('takeover_business_data');
-    return saved ? JSON.parse(saved).healthScore : defaultState.healthScore;
+  const savedData = safelyGetLocalStorage();
+
+  const [healthScore, setHealthScore] = useState<number>(() => {
+    return savedData && savedData.healthScore !== undefined ? savedData.healthScore : defaultState.healthScore;
   });
-  const [totalRevenue, setTotalRevenue] = useState(() => {
-    const saved = localStorage.getItem('takeover_business_data');
-    return saved ? JSON.parse(saved).totalRevenue : defaultState.totalRevenue;
+  const [totalRevenue, setTotalRevenue] = useState<number>(() => {
+    return savedData && savedData.totalRevenue !== undefined ? savedData.totalRevenue : defaultState.totalRevenue;
   });
-  const [activeCustomers, setActiveCustomers] = useState(() => {
-    const saved = localStorage.getItem('takeover_business_data');
-    return saved ? JSON.parse(saved).activeCustomers : defaultState.activeCustomers;
+  const [activeCustomers, setActiveCustomers] = useState<number>(() => {
+    return savedData && savedData.activeCustomers !== undefined ? savedData.activeCustomers : defaultState.activeCustomers;
   });
-  const [monthlyExpenses, setMonthlyExpenses] = useState(() => {
-    const saved = localStorage.getItem('takeover_business_data');
-    return saved ? JSON.parse(saved).monthlyExpenses : defaultState.monthlyExpenses;
+  const [monthlyExpenses, setMonthlyExpenses] = useState<number>(() => {
+    return savedData && savedData.monthlyExpenses !== undefined ? savedData.monthlyExpenses : defaultState.monthlyExpenses;
   });
-  const [cashFlow, setCashFlow] = useState(() => {
-    const saved = localStorage.getItem('takeover_business_data');
-    return saved ? JSON.parse(saved).cashFlow : defaultState.cashFlow;
+  const [cashFlow, setCashFlow] = useState<number>(() => {
+    return savedData && savedData.cashFlow !== undefined ? savedData.cashFlow : defaultState.cashFlow;
   });
+
+  const [documents, setDocuments] = useState<UploadedDocument[]>(() => {
+    return savedData && savedData.documents ? savedData.documents : defaultState.documents;
+  });
+
+  const [analysisMode, setAnalysisMode] = useState<'Monthly' | 'Annual'>(() => {
+    return savedData && savedData.analysisMode ? savedData.analysisMode : defaultState.analysisMode;
+  });
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    return savedData && savedData.selectedMonth ? savedData.selectedMonth : defaultState.selectedMonth;
+  });
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    return savedData && savedData.selectedYear ? savedData.selectedYear : defaultState.selectedYear;
+  });
+
   const [prevHealthScore, setPrevHealthScore] = useState(defaultState.prevHealthScore);
   const [prevTotalRevenue, setPrevTotalRevenue] = useState(defaultState.prevTotalRevenue);
   const [prevActiveCustomers, setPrevActiveCustomers] = useState(defaultState.prevActiveCustomers);
@@ -136,22 +160,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
   
   const [businessGrade, setBusinessGrade] = useState(defaultState.businessGrade);
 
-  const [documents, setDocuments] = useState<UploadedDocument[]>(() => {
-    const saved = localStorage.getItem('takeover_business_data');
-    return saved ? JSON.parse(saved).documents : defaultState.documents;
-  });
-  const [analysisMode, setAnalysisMode] = useState<'Monthly' | 'Annual'>(() => {
-    const saved = localStorage.getItem('takeover_business_data');
-    return saved && JSON.parse(saved).analysisMode ? JSON.parse(saved).analysisMode : defaultState.analysisMode;
-  });
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const saved = localStorage.getItem('takeover_business_data');
-    return saved && JSON.parse(saved).selectedMonth ? JSON.parse(saved).selectedMonth : defaultState.selectedMonth;
-  });
-  const [selectedYear, setSelectedYear] = useState<number>(() => {
-    const saved = localStorage.getItem('takeover_business_data');
-    return saved && JSON.parse(saved).selectedYear ? JSON.parse(saved).selectedYear : defaultState.selectedYear;
-  });
+
   const [aiContext, setAiContext] = useState<AIContextObject | null>(defaultState.aiContext);
   const [isLoaded, setIsLoaded] = useState(false);
 

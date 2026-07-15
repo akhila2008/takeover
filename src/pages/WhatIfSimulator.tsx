@@ -6,7 +6,7 @@ import styles from './WhatIfSimulator.module.css';
 import { useBusinessData } from '../context/BusinessDataContext';
 
 export const WhatIfSimulator: React.FC = () => {
-  const { totalRevenue, monthlyExpenses, documents } = useBusinessData();
+  const { totalRevenue, monthlyExpenses, documents, aiContext } = useBusinessData();
   const hasData = aiContext !== null;
   const [priceMultiplier, setPriceMultiplier] = useState(1);
   const [marketingBudget, setMarketingBudget] = useState(1);
