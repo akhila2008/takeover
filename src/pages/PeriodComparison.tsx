@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { GitCompare, DollarSign, Activity, TrendingUp, ShieldAlert } from 'lucide-react';
+import { GitCompare, IndianRupee, Activity, TrendingUp, ShieldAlert } from 'lucide-react';
 import { useBusinessData } from '../context/BusinessDataContext';
 import { generateIntelligenceContext } from '../lib/IntelligenceEngine';
 import { Dropdown } from '../components/ui/Dropdown';
@@ -28,11 +28,13 @@ export const PeriodComparison: React.FC = () => {
   const analyzedDocs = useMemo(() => documents.filter(d => d.status === 'analyzed'), [documents]);
 
   const contextA = useMemo(() => {
-    return generateIntelligenceContext(analyzedDocs, analyzedDocs, monthA, yearA);
+    const docs = analyzedDocs.filter(d => d.month === monthA && d.year === yearA);
+    return generateIntelligenceContext(docs, docs, monthA, yearA);
   }, [analyzedDocs, monthA, yearA]);
 
   const contextB = useMemo(() => {
-    return generateIntelligenceContext(analyzedDocs, analyzedDocs, monthB, yearB);
+    const docs = analyzedDocs.filter(d => d.month === monthB && d.year === yearB);
+    return generateIntelligenceContext(docs, docs, monthB, yearB);
   }, [analyzedDocs, monthB, yearB]);
 
   const radarData = useMemo(() => {
@@ -47,20 +49,6 @@ export const PeriodComparison: React.FC = () => {
   }, [contextA, contextB]);
 
   const formatCurrency = (val: number) => `₹${val.toLocaleString()}`;
-
-  if (!contextA || !contextB) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.header}>
-          <GitCompare size={32} className={styles.headerIcon} />
-          <div>
-            <h1>Period Comparison</h1>
-            <p>Upload documents to enable comparison metrics.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={styles.container}>
@@ -114,89 +102,99 @@ export const PeriodComparison: React.FC = () => {
         </div>
       </div>
 
-      <div className={styles.comparisonGrid}>
-        {/* Column A */}
-        <div className={styles.comparisonColumn}>
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <DollarSign size={20} className={styles.cardIcon} />
-              <h3 className={styles.cardTitle}>Revenue ({monthA} {yearA})</h3>
-            </div>
-            <div className={styles.metricValue}>{formatCurrency(contextA.revenue)}</div>
-            <div className={styles.metricLabel}>Profit Margin: {contextA.profitMargin}%</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <Activity size={20} className={styles.cardIcon} />
-              <h3 className={styles.cardTitle}>Health Score ({monthA} {yearA})</h3>
-            </div>
-            <div className={styles.metricValue}>{contextA.healthScore}/100</div>
-            <div className={styles.metricLabel}>Grade: {contextA.grade}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <TrendingUp size={20} className={styles.cardIcon} />
-              <h3 className={styles.cardTitle}>Cash Flow ({monthA} {yearA})</h3>
-            </div>
-            <div className={styles.metricValue}>{formatCurrency(contextA.cashFlow)}</div>
-            <div className={styles.metricLabel}>Operating Expenses: {formatCurrency(contextA.expenses)}</div>
-          </div>
+      {!contextA || !contextB ? (
+        <div style={{ textAlign: 'center', padding: '40px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', marginTop: '24px' }}>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            No data found for the selected periods. Please upload documents in Document Intel for {monthA} {yearA} or {monthB} {yearB}.
+          </p>
         </div>
+      ) : (
+        <>
+          <div className={styles.comparisonGrid}>
+            {/* Column A */}
+            <div className={styles.comparisonColumn}>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <IndianRupee size={20} className={styles.cardIcon} />
+                  <h3 className={styles.cardTitle}>Revenue ({monthA} {yearA})</h3>
+                </div>
+                <div className={styles.metricValue}>{formatCurrency(contextA.revenue)}</div>
+                <div className={styles.metricLabel}>Profit Margin: {contextA.profitMargin}%</div>
+              </div>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <Activity size={20} className={styles.cardIcon} />
+                  <h3 className={styles.cardTitle}>Health Score ({monthA} {yearA})</h3>
+                </div>
+                <div className={styles.metricValue}>{contextA.healthScore}/100</div>
+                <div className={styles.metricLabel}>Grade: {contextA.grade}</div>
+              </div>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <TrendingUp size={20} className={styles.cardIcon} />
+                  <h3 className={styles.cardTitle}>Cash Flow ({monthA} {yearA})</h3>
+                </div>
+                <div className={styles.metricValue}>{formatCurrency(contextA.cashFlow)}</div>
+                <div className={styles.metricLabel}>Operating Expenses: {formatCurrency(contextA.expenses)}</div>
+              </div>
+            </div>
 
-        {/* Column B */}
-        <div className={styles.comparisonColumn}>
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <DollarSign size={20} className={styles.cardIcon} />
-              <h3 className={styles.cardTitle}>Revenue ({monthB} {yearB})</h3>
-            </div>
-            <div className={styles.metricValue}>{formatCurrency(contextB.revenue)}</div>
-            <div className={styles.metricLabel}>
-              Profit Margin: {contextB.profitMargin}% 
-              ({(contextB.profitMargin - contextA.profitMargin) > 0 ? '+' : ''}{(contextB.profitMargin - contextA.profitMargin).toFixed(1)}% vs A)
+            {/* Column B */}
+            <div className={styles.comparisonColumn}>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <IndianRupee size={20} className={styles.cardIcon} />
+                  <h3 className={styles.cardTitle}>Revenue ({monthB} {yearB})</h3>
+                </div>
+                <div className={styles.metricValue}>{formatCurrency(contextB.revenue)}</div>
+                <div className={styles.metricLabel}>
+                  Profit Margin: {contextB.profitMargin}% 
+                  ({(contextB.profitMargin - contextA.profitMargin) > 0 ? '+' : ''}{(contextB.profitMargin - contextA.profitMargin).toFixed(1)}% vs A)
+                </div>
+              </div>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <Activity size={20} className={styles.cardIcon} />
+                  <h3 className={styles.cardTitle}>Health Score ({monthB} {yearB})</h3>
+                </div>
+                <div className={styles.metricValue}>{contextB.healthScore}/100</div>
+                <div className={styles.metricLabel}>
+                  Grade: {contextB.grade} 
+                  ({(contextB.healthScore - contextA.healthScore) > 0 ? '+' : ''}{contextB.healthScore - contextA.healthScore} pts vs A)
+                </div>
+              </div>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <TrendingUp size={20} className={styles.cardIcon} />
+                  <h3 className={styles.cardTitle}>Cash Flow ({monthB} {yearB})</h3>
+                </div>
+                <div className={styles.metricValue}>{formatCurrency(contextB.cashFlow)}</div>
+                <div className={styles.metricLabel}>
+                  Operating Expenses: {formatCurrency(contextB.expenses)}
+                </div>
+              </div>
             </div>
           </div>
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <Activity size={20} className={styles.cardIcon} />
-              <h3 className={styles.cardTitle}>Health Score ({monthB} {yearB})</h3>
-            </div>
-            <div className={styles.metricValue}>{contextB.healthScore}/100</div>
-            <div className={styles.metricLabel}>
-              Grade: {contextB.grade} 
-              ({(contextB.healthScore - contextA.healthScore) > 0 ? '+' : ''}{contextB.healthScore - contextA.healthScore} pts vs A)
-            </div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <TrendingUp size={20} className={styles.cardIcon} />
-              <h3 className={styles.cardTitle}>Cash Flow ({monthB} {yearB})</h3>
-            </div>
-            <div className={styles.metricValue}>{formatCurrency(contextB.cashFlow)}</div>
-            <div className={styles.metricLabel}>
-              Operating Expenses: {formatCurrency(contextB.expenses)}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className={styles.chartContainer}>
-        <h3>KPI Profile Comparison</h3>
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-            <PolarGrid stroke="rgba(255,255,255,0.1)" />
-            <PolarAngleAxis dataKey="subject" tick={{ fill: '#9ca3af', fontSize: 12 }} />
-            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#6b7280' }} />
-            <Radar name={`Period A (${monthA} ${yearA})`} dataKey="A" stroke="#a78bfa" fill="#a78bfa" fillOpacity={0.4} />
-            <Radar name={`Period B (${monthB} ${yearB})`} dataKey="B" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.4} />
-            <RechartsTooltip 
-              contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.9)', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: '8px' }}
-              itemStyle={{ color: '#fff' }}
-            />
-            <Legend wrapperStyle={{ paddingTop: '20px' }} />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
+          <div className={styles.chartContainer}>
+            <h3>KPI Profile Comparison</h3>
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#6b7280' }} />
+                <Radar name={`Period A (${monthA} ${yearA})`} dataKey="A" stroke="#a78bfa" fill="#a78bfa" fillOpacity={0.4} />
+                <Radar name={`Period B (${monthB} ${yearB})`} dataKey="B" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.4} />
+                <RechartsTooltip 
+                  contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.9)', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: '8px' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
     </div>
   );
 };
