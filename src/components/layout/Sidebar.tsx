@@ -13,7 +13,8 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  BrainCircuit
+  BrainCircuit,
+  GitCompare
 } from 'lucide-react';
 import styles from './Sidebar.module.css';
 
@@ -30,6 +31,7 @@ const navItems = [
   { icon: Activity, label: 'Digital Twin' },
   { icon: Dna, label: 'Business DNA' },
   { icon: TrendingUp, label: 'What-If Simulator' },
+  { icon: GitCompare, label: 'Period Comparison' },
   { icon: AlertTriangle, label: 'Risk Radar' },
   { icon: CheckSquare, label: 'Action Center' },
   { icon: Map, label: 'Success Roadmap' },

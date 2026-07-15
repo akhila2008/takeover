@@ -14,6 +14,7 @@ import { Profile } from './pages/Profile';
 import { BusinessDataProvider } from './context/BusinessDataContext';
 import { DocumentIntel } from './pages/DocumentIntel';
 import { BusinessHistory } from './pages/BusinessHistory';
+import { PeriodComparison } from './pages/PeriodComparison';
 
 function App() {
   const [activePage, setActivePage] = useState('executive-briefing');
@@ -40,6 +41,8 @@ function App() {
         return <Profile />;
       case 'document-intel':
         return <DocumentIntel />;
+      case 'period-comparison':
+        return <PeriodComparison />;
       case 'business-history':
         return <BusinessHistory />;
       default:

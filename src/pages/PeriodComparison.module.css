@@ -1,0 +1,173 @@
+.container {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  color: white;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.headerIcon {
+  color: var(--primary-light, #a78bfa);
+}
+
+.header h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  background: linear-gradient(to right, #fff, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header p {
+  color: #9ca3af;
+  margin: 0;
+  margin-top: 0.25rem;
+}
+
+.selectors {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.periodSelector {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.periodSelector label {
+  font-size: 0.875rem;
+  color: #a78bfa;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.selectGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.selectGroup select {
+  background: rgba(31, 41, 55, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  flex: 1;
+}
+
+.selectGroup select:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+.vsDivider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #6b7280;
+  font-size: 1.25rem;
+}
+
+.comparisonGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.comparisonColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  color: #d1d5db;
+}
+
+.cardIcon {
+  color: #a78bfa;
+}
+
+.cardTitle {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.metricValue {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(to right, #fff, #d8b4fe);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.metricLabel {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.chartContainer {
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 2rem;
+  backdrop-filter: blur(10px);
+  height: 500px;
+}
+
+.chartContainer h3 {
+  margin: 0 0 2rem 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #e5e7eb;
+}
