@@ -1,15 +1,21 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileText, CheckCircle, Loader2, Database, X } from 'lucide-react';
+import { UploadCloud, FileText, CheckCircle, Loader2, Database, X, BarChart3, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import styles from './DocumentIntel.module.css';
 import { useBusinessData } from '../context/BusinessDataContext';
 
-export const DocumentIntel: React.FC = () => {
+interface Props {
+  onNavigate?: (page: string) => void;
+}
+
+export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
   const { 
     documents, addDocument, updateDocumentStatus, 
     updateMetricsFromDocument, removeDocument, generateSnapshot,
     selectedMonth, selectedYear, analysisMode
   } = useBusinessData();
   const [dragActive, setDragActive] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredDocs = documents.filter(d => {
@@ -19,6 +25,9 @@ export const DocumentIntel: React.FC = () => {
       return d.year === selectedYear;
     }
   });
+
+  const isAnalyzing = filteredDocs.some(d => d.status === 'parsing');
+  const hasAnalyzedDocs = filteredDocs.length > 0 && !isAnalyzing;
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -58,6 +67,7 @@ export const DocumentIntel: React.FC = () => {
       // Wait for metrics to finish updating via context, then take snapshot
       setTimeout(() => {
         generateSnapshot();
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Analysis completed successfully!' }));
       }, 500);
     }, 2500);
   };
@@ -78,8 +88,21 @@ export const DocumentIntel: React.FC = () => {
     }
   };
 
+  const handleViewAnalysis = () => {
+    if (!onNavigate) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      onNavigate('executive-briefing');
+    }, 400); // 400ms transition delay
+  };
+
   return (
-    <div className={styles.container}>
+    <motion.div 
+      className={styles.container}
+      initial={{ opacity: 1 }}
+      animate={{ opacity: isTransitioning ? 0 : 1 }}
+      transition={{ duration: 0.4 }}
+    >
       <div className={styles.header}>
         <h1>Document Intelligence Hub</h1>
         <p>Upload sales reports, customer databases, expenses, or inventory PDFs. Our engine will dynamically analyze the data and update your business health metrics in real-time.</p>
@@ -155,9 +178,42 @@ export const DocumentIntel: React.FC = () => {
                 ))}
               </div>
             )}
+            
+            <AnimatePresence>
+              {(isAnalyzing || hasAnalyzedDocs) && (
+                <motion.div 
+                  className={styles.analysisActionContainer}
+                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                >
+                  <motion.button
+                    className={`${styles.viewAnalysisBtn} ${isAnalyzing ? styles.analyzingBtn : ''}`}
+                    onClick={handleViewAnalysis}
+                    disabled={isAnalyzing || isTransitioning}
+                    whileHover={!isAnalyzing && !isTransitioning ? { scale: 1.03 } : {}}
+                    whileTap={!isAnalyzing && !isTransitioning ? { scale: 0.98 } : {}}
+                    aria-label={isAnalyzing ? 'Analyzing documents' : 'View Analysis'}
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 size={18} className={styles.spinnerBtn} />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <BarChart3 size={18} />
+                        View Analysis
+                        <ArrowRight size={18} className={styles.arrowIcon} />
+                      </>
+                    )}
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

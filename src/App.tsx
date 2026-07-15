@@ -71,7 +71,7 @@ function App() {
       case 'settings':
         return <Profile />;
       case 'document-intel':
-        return <DocumentIntel />;
+        return <DocumentIntel onNavigate={setActivePage} />;
       case 'period-comparison':
         return <PeriodComparison />;
       case 'business-history':

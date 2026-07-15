@@ -171,7 +171,59 @@
 }
 
 .analyzed {
-  color: #10b981;
+  color: var(--accent-success);
+}
+
+.analysisActionContainer {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viewAnalysisBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.9), rgba(168, 85, 247, 0.9));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.viewAnalysisBtn:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.analyzingBtn {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  box-shadow: none;
+  cursor: not-allowed;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.spinnerBtn {
+  animation: spin 1.5s linear infinite;
+  color: var(--text-muted);
+}
+
+.arrowIcon {
+  transition: transform 0.2s ease;
+}
+
+.viewAnalysisBtn:hover:not(.analyzingBtn) .arrowIcon {
+  transform: translateX(4px);
 }
 
 .spinner {
