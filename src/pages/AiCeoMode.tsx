@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Bot, User, BarChart2, Mic, MicOff, Volume2, VolumeX, Settings, X } from 'lucide-react';
+import { Send, Bot, User, BarChart2, Mic, MicOff, Volume2, VolumeX, Settings, X, Menu } from 'lucide-react';
 import styles from './AiCeoMode.module.css';
 import { useBusinessData } from '../context/BusinessDataContext';
 import { Dropdown } from '../components/ui/Dropdown';
+import { ChatSidebar } from '../components/chat/ChatSidebar';
+import { chatService } from '../lib/chatService';
+import type { Conversation } from '../lib/chatService';
 
 interface Message {
   id: string;
@@ -12,7 +15,6 @@ interface Message {
   hasChart?: boolean;
 }
 
-// Ensure SpeechRecognition is available in TypeScript
 declare global {
   interface Window {
     SpeechRecognition: any;
@@ -22,13 +24,12 @@ declare global {
 
 export const AiCeoMode: React.FC = () => {
   const { healthScore, totalRevenue, activeCustomers, monthlyExpenses, cashFlow, documents, aiContext } = useBusinessData();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      sender: 'ai',
-      text: 'Hello. I am your AI CEO. I am currently monitoring all real-time data metrics. What strategic objective shall we focus on today?',
-    }
-  ]);
+  
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
@@ -61,6 +62,36 @@ export const AiCeoMode: React.FC = () => {
   };
 
   useEffect(() => {
+    chatService.getConversations().then(data => {
+      setConversations(data);
+      if (data.length > 0) {
+        setActiveConversationId(data[0].id);
+      } else {
+        handleNewChat();
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+    chatService.getMessages(activeConversationId).then(data => {
+      if (data.length === 0) {
+        setMessages([{
+          id: `ai-intro-${Date.now()}`,
+          sender: 'ai',
+          text: 'Hello. I am your AI CEO. I am currently monitoring all real-time data metrics. What strategic objective shall we focus on today?'
+        }]);
+      } else {
+        setMessages(data.map(m => ({
+          id: m.id,
+          sender: m.role === 'assistant' ? 'ai' : 'user',
+          text: m.content
+        })));
+      }
+    });
+  }, [activeConversationId]);
+
+  useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
 
@@ -70,7 +101,6 @@ export const AiCeoMode: React.FC = () => {
     }
   }, [language]);
 
-  // Setup Speech Recognition
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -101,9 +131,7 @@ export const AiCeoMode: React.FC = () => {
     }
     
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
+      if (recognitionRef.current) recognitionRef.current.stop();
       window.speechSynthesis.cancel();
     };
   }, []);
@@ -113,7 +141,6 @@ export const AiCeoMode: React.FC = () => {
       alert("Speech recognition is not supported in this browser. Try Chrome or Edge.");
       return;
     }
-
     if (isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
@@ -129,9 +156,7 @@ export const AiCeoMode: React.FC = () => {
       setSpeakingMessageId(null);
       return;
     }
-
     window.speechSynthesis.cancel();
-    
     const utterance = new SpeechSynthesisUtterance(text);
     const voices = window.speechSynthesis.getVoices();
     const langPrefix = language.split('-')[0];
@@ -140,7 +165,6 @@ export const AiCeoMode: React.FC = () => {
     
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
-
     utterance.onend = () => setSpeakingMessageId(null);
     utterance.onerror = () => setSpeakingMessageId(null);
 
@@ -148,49 +172,71 @@ export const AiCeoMode: React.FC = () => {
     window.speechSynthesis.speak(utterance);
   };
 
-  const streamAiResponse = async (userText: string, chatHistory: Message[], aiMsgId: string) => {
+  const handleNewChat = async () => {
+    const convo = await chatService.createConversation();
+    setConversations(prev => [convo, ...prev]);
+    setActiveConversationId(convo.id);
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  };
+
+  const handleDeleteChat = async (id: string) => {
+    await chatService.deleteConversation(id);
+    setConversations(prev => prev.filter(c => c.id !== id));
+    if (activeConversationId === id) {
+      const remaining = conversations.filter(c => c.id !== id);
+      if (remaining.length > 0) setActiveConversationId(remaining[0].id);
+      else handleNewChat();
+    }
+  };
+
+  const handleRenameChat = async (id: string, newTitle: string) => {
+    await chatService.updateConversationTitle(id, newTitle);
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
+  };
+
+  const generateAutoTitle = async (firstMessage: string, convoId: string) => {
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+           'Content-Type': 'application/json',
+           'Authorization': `Bearer ${groqApiKey.trim()}`
+        },
+        body: JSON.stringify({
+           model: 'llama-3.1-8b-instant',
+           messages: [
+             { role: 'system', content: 'You generate short titles for conversations. Output ONLY the title, max 5 words, no quotes.' },
+             { role: 'user', content: firstMessage }
+           ]
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const title = data.choices[0].message.content.trim().replace(/['"]/g, '');
+        await handleRenameChat(convoId, title);
+      }
+    } catch(e) {}
+  };
+
+  const streamAiResponse = async (userText: string, chatHistory: Message[], aiMsgId: string, currentConvoId: string) => {
     const generateMockResponse = (input: string) => {
       const lowerInput = input.toLowerCase();
-      
       const responses: Record<string, string[]> = {
-        revenue: [
-          "(Demo Mode) Revenue is trending positively this quarter. Our predictive models suggest a 12% increase by year-end.",
-          "(Demo Mode) Based on the data, sales have hit targets in 3 of our top 4 regions. I recommend doubling down on the underperforming region.",
-          "(Demo Mode) The top-line growth is solid, heavily driven by returning customers. We should focus on maximizing lifetime value."
-        ],
-        expense: [
-          "(Demo Mode) Operating expenses are slightly higher than projected due to increased software licensing costs. Let's audit the tech stack.",
-          "(Demo Mode) We are burning capital faster than expected in the operational sector. A minor restructuring could save 8% monthly.",
-          "(Demo Mode) Costs are within the acceptable threshold, but logistics expenses are rising. We should renegotiate vendor contracts."
-        ],
-        customer: [
-          "(Demo Mode) Customer retention is strong at 92%. However, new acquisition has slowed down. A targeted ad campaign could help.",
-          "(Demo Mode) Client satisfaction scores are hovering around 4.2/5. Let's investigate the recent drop in support ticket resolution speeds.",
-          "(Demo Mode) Our top 20% of customers are driving 80% of revenue. We should launch an exclusive loyalty program for them."
-        ],
-        inventory: [
-          "(Demo Mode) We have a potential stockout risk for our top-selling product. I recommend increasing the buffer stock immediately.",
-          "(Demo Mode) Inventory turnover ratio is healthy, but we have some dead stock accumulating in warehouse B.",
-          "(Demo Mode) Supply chain delays might impact next month's inventory levels. We should order raw materials early."
-        ],
-        general: [
-          "(Demo Mode) That's an interesting question. Based on current metrics, our overall business health is strong, but we must stay vigilant on cash flow.",
-          "(Demo Mode) I'm analyzing the data... The trends suggest we should focus on optimizing operational efficiency this quarter.",
-          "(Demo Mode) According to the latest data pulse, we are on track to meet our annual targets, provided we keep expenses in check.",
-          "(Demo Mode) Our predictive models indicate steady growth. Is there a specific metric you'd like me to dive deeper into?",
-          "(Demo Mode) I don't have enough specific data to answer that definitively, but structurally the business is performing above the baseline."
-        ]
+        revenue: ["(Demo Mode) Revenue is trending positively this quarter. Our predictive models suggest a 12% increase by year-end."],
+        expense: ["(Demo Mode) Operating expenses are slightly higher than projected due to increased software licensing costs."],
+        customer: ["(Demo Mode) Customer retention is strong at 92%. However, new acquisition has slowed down."],
+        inventory: ["(Demo Mode) We have a potential stockout risk for our top-selling product."],
+        general: ["(Demo Mode) According to the latest data pulse, we are on track to meet our annual targets, provided we keep expenses in check."]
       };
-
       let category = 'general';
       if (lowerInput.includes('revenue') || lowerInput.includes('sale') || lowerInput.includes('profit')) category = 'revenue';
       else if (lowerInput.includes('expense') || lowerInput.includes('cost') || lowerInput.includes('spend')) category = 'expense';
       else if (lowerInput.includes('customer') || lowerInput.includes('client') || lowerInput.includes('user')) category = 'customer';
       else if (lowerInput.includes('inventory') || lowerInput.includes('stock') || lowerInput.includes('product')) category = 'inventory';
-
-      const categoryResponses = responses[category];
-      return categoryResponses[Math.floor(Math.random() * categoryResponses.length)];
+      return responses[category][Math.floor(Math.random() * responses[category].length)];
     };
+
+    let finalResponseText = '';
 
     try {
       const systemPrompt = `You are an elite AI Business Executive Assistant.
@@ -208,50 +254,38 @@ ${JSON.stringify(aiContext || { status: 'No data' }, null, 2)}
 IMPORTANT: You must provide your entire response translated into the following language code: ${language}`;
       
       const messagesPayload = chatHistory
-        .filter(msg => msg.id !== '1' && msg.id !== aiMsgId && msg.text) 
+        .filter(msg => msg.id !== '1' && msg.id !== aiMsgId && msg.text && !msg.text.includes('Hello. I am your AI CEO.')) 
         .map(msg => ({
           role: msg.sender === 'ai' ? 'assistant' : 'user',
           content: msg.text
         }));
 
-      // Prepend system prompt to the first user message, or insert it if missing.
       messagesPayload.unshift({ role: 'system', content: systemPrompt });
       messagesPayload.push({ role: 'user', content: userText });
 
       const url = groqApiKey ? 'https://api.groq.com/openai/v1/chat/completions' : 'http://localhost:11434/api/chat';
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (groqApiKey) {
-        headers['Authorization'] = `Bearer ${groqApiKey.trim()}`;
-      }
+      if (groqApiKey) headers['Authorization'] = `Bearer ${groqApiKey.trim()}`;
       
       const bodyPayload = groqApiKey 
         ? { model: 'llama-3.1-8b-instant', messages: messagesPayload, stream: true }
         : { model: 'llama3', messages: messagesPayload, stream: true };
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(bodyPayload)
-      });
+      const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(bodyPayload) });
       
       if (!response.ok) {
         let errorText = await response.text();
         try {
            const parsed = JSON.parse(errorText);
-           if (parsed.error && parsed.error.message) {
-              errorText = parsed.error.message;
-           }
+           if (parsed.error && parsed.error.message) errorText = parsed.error.message;
         } catch(e) {}
-        console.error("API Error:", errorText);
         throw new Error(groqApiKey ? `Groq API Failed: ${errorText}` : "Ollama API Failed");
       }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder("utf-8");
       
-      if (!reader) {
-        throw new Error("No reader available");
-      }
+      if (!reader) throw new Error("No reader available");
 
       let buffer = '';
       while (true) {
@@ -259,7 +293,6 @@ IMPORTANT: You must provide your entire response translated into the following l
         if (done) break;
         
         buffer += decoder.decode(value, { stream: true });
-        
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
         
@@ -269,7 +302,6 @@ IMPORTANT: You must provide your entire response translated into the following l
           
           try {
             let textChunk = "";
-            
             if (groqApiKey) {
               if (trimmedLine === 'data: [DONE]') continue;
               if (trimmedLine.startsWith('data: ')) {
@@ -280,21 +312,17 @@ IMPORTANT: You must provide your entire response translated into the following l
               }
             } else {
               const data = JSON.parse(trimmedLine);
-              if (data.message && data.message.content) {
-                textChunk = data.message.content;
-              }
+              if (data.message && data.message.content) textChunk = data.message.content;
             }
             
             if (textChunk) {
               textChunk = textChunk.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#/g, '');
+              finalResponseText += textChunk;
               setIsTyping(false);
               setMessages(prev => {
                 const exists = prev.some(msg => msg.id === aiMsgId);
-                if (exists) {
-                  return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: msg.text + textChunk } : msg);
-                } else {
-                  return [...prev, { id: aiMsgId, sender: 'ai', text: textChunk }];
-                }
+                if (exists) return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: msg.text + textChunk } : msg);
+                return [...prev, { id: aiMsgId, sender: 'ai', text: textChunk }];
               });
             }
           } catch (e) {
@@ -303,210 +331,207 @@ IMPORTANT: You must provide your entire response translated into the following l
         }
       }
 
-      // --- STEP 7: AI Validation Layer ---
-      let finalResponseText = '';
-        setMessages(prev => {
-          const msg = prev.find(m => m.id === aiMsgId);
-          if (msg) finalResponseText = msg.text;
-          return prev;
-        });
-
-        const validateResponse = (text: string) => {
-          const lowerText = text.toLowerCase();
-          if (aiContext) {
-            if (aiContext.inventoryScore > 80 && (lowerText.includes('inventory shortage') || lowerText.includes('out of stock'))) return false;
-            if (aiContext.profitMargin > 30 && (lowerText.includes('poor financial') || lowerText.includes('low margin'))) return false;
-            if (aiContext.healthScore > 85 && (lowerText.includes('critical condition') || lowerText.includes('struggling business'))) return false;
-          }
-          return true;
-        };
-
-        if (!validateResponse(finalResponseText)) {
-           // Reject and regenerate
-           setMessages(prev => prev.map(msg => 
-             msg.id === aiMsgId ? { ...msg, text: "I apologize, I detected a logical inconsistency in my own analysis. Let me recalculate... \n\n(Validation Engine: Hallucination blocked. Regenerating...)" } : msg
-           ));
-        }
-
-      } catch (error: any) {
-        console.error("API Error:", error);
-        setIsTyping(false);
-        setMessages(prev => {
-          const exists = prev.some(msg => msg.id === aiMsgId);
-          
-          let errorResponse = "";
-          if (groqApiKey) {
-            errorResponse = `(Error) Groq API connection failed. Check your API key or console for details. Error: ${error.message}`;
-          } else {
-            errorResponse = generateMockResponse(userText);
-          }
-          
-          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: errorResponse }];
-          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: errorResponse } : msg);
-        });
+    } catch (error: any) {
+      console.error("API Error:", error);
+      setIsTyping(false);
+      let errorResponse = "";
+      if (groqApiKey) {
+        errorResponse = `(Error) Groq API connection failed. Check your API key or console for details. Error: ${error.message}`;
+      } else {
+        errorResponse = generateMockResponse(userText);
       }
+      finalResponseText = errorResponse;
+      
+      setMessages(prev => {
+        const exists = prev.some(msg => msg.id === aiMsgId);
+        if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: errorResponse }];
+        return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: errorResponse } : msg);
+      });
+    }
+
+    // Save final AI response to DB
+    if (finalResponseText) {
+      await chatService.saveMessage({
+        conversation_id: currentConvoId,
+        role: 'assistant',
+        content: finalResponseText
+      });
+    }
   };
 
   const handleSend = async () => {
-    if (!inputValue.trim() || isTyping) return;
+    if (!inputValue.trim() || isTyping || !activeConversationId) return;
     
     const userText = inputValue;
-    const aiMsgId = `ai-${Date.now()}`;
-    const newUserMsg: Message = { id: `user-${Date.now()}-${Math.random()}`, sender: 'user', text: userText };
+    const currentConvoId = activeConversationId;
     
+    // Auto title generation if new conversation
+    const activeConvo = conversations.find(c => c.id === currentConvoId);
+    if (activeConvo && activeConvo.title === 'New Conversation' && groqApiKey) {
+      generateAutoTitle(userText, currentConvoId);
+    }
+
+    // Save User Msg
+    const dbUserMsg = await chatService.saveMessage({
+      conversation_id: currentConvoId,
+      role: 'user',
+      content: userText
+    });
+    
+    const newUserMsg: Message = { id: dbUserMsg.id, sender: 'user', text: userText };
     setMessages(prev => [...prev, newUserMsg]);
     setInputValue('');
 
-    // Stop listening if sending
     if (isListening && recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        console.warn("Speech recognition already stopped", e);
-      }
+      try { recognitionRef.current.stop(); } catch (e) {}
       setIsListening(false);
     }
     
     setIsTyping(true);
-
+    const aiMsgId = `ai-${Date.now()}`;
+    
     try {
-      await streamAiResponse(userText, messages, aiMsgId);
+      await streamAiResponse(userText, messages, aiMsgId, currentConvoId);
     } catch (error) {
       console.error("Fatal Error in AI response:", error);
-      setMessages(prev => {
-        const exists = prev.some(msg => msg.id === aiMsgId);
-        if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: "I encountered an unexpected system error. Please check the console." }];
-        return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: "I encountered an unexpected system error. Please check the console." } : msg);
-      });
-    } finally {
       setIsTyping(false);
     }
   };
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div>
-          <h1 className="gradient-text" style={{ fontSize: '2.5rem', marginBottom: '8px' }}>AI CEO Mode</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Conversational intelligence and strategy.</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '160px' }}>
-            <Dropdown
-              value={language}
-              onChange={(val) => setLanguage(val as string)}
-              options={languages.map(lang => ({ value: lang.code, label: lang.name }))}
-            />
-          </div>
-          <button 
-            className={styles.settingsBtn} 
-            onClick={() => setShowSettings(!showSettings)}
-            title="Configure AI API"
-          >
-            <Settings size={22} color={groqApiKey ? "var(--accent-success)" : "#9ca3af"} />
-          </button>
-        </div>
-      </header>
+      <ChatSidebar 
+        isOpen={sidebarOpen}
+        conversations={conversations}
+        activeId={activeConversationId}
+        onSelect={(id) => {
+          setActiveConversationId(id);
+          if (window.innerWidth < 768) setSidebarOpen(false);
+        }}
+        onNew={handleNewChat}
+        onDelete={handleDeleteChat}
+        onRename={handleRenameChat}
+      />
 
-      {showSettings && (
-        <motion.div 
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className={styles.settingsPanel}
-        >
-          <div className={styles.settingsHeader}>
-            <h3>Cloud AI Integration (Groq + RAG)</h3>
-            <button onClick={() => setShowSettings(false)} className={styles.closeBtn}><X size={18} /></button>
-          </div>
-          <p>Enter your free Groq API key to unlock the true power of your AI CEO instead of using the mock offline demo. Your key is stored safely and locally in your browser.</p>
-          <div className={styles.inputGroup}>
-            <input 
-              type="password" 
-              placeholder="gsk_..." 
-              value={groqApiKey} 
-              onChange={(e) => handleSaveApiKey(e.target.value)} 
-              className={styles.apiKeyInput}
-            />
-          </div>
-        </motion.div>
-      )}
-
-      <div className={`glass-panel ${styles.chatInterface}`}>
-        <div className={styles.messagesArea}>
-          {messages.map((msg) => (
-            <motion.div 
-              key={msg.id}
-              className={`${styles.messageWrapper} ${msg.sender === 'user' ? styles.msgUser : styles.msgAi}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
+      <div className={styles.mainContent}>
+        <header className={styles.header}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button 
+              className={styles.settingsBtn} 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              title="Toggle Sidebar"
             >
-              <div className={styles.avatar}>
-                {msg.sender === 'ai' ? <Bot size={20} /> : <User size={20} />}
-              </div>
-              
-              <div className={styles.messageContent}>
-                {msg.sender === 'ai' && (
-                  <button 
-                    className={styles.speakerBtn} 
-                    onClick={() => toggleSpeech(msg.id, msg.text)}
-                    title={speakingMessageId === msg.id ? "Stop Speaking" : "Read Aloud (TTS)"}
-                  >
-                    {speakingMessageId === msg.id ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                  </button>
-                )}
-                
-                <p>{msg.text}</p>
-                
-                {msg.hasChart && (
-                  <div className={styles.mockChart}>
-                    <div className={styles.chartHeader}>
-                      <BarChart2 size={16} /> Data Breakdown
-                    </div>
-                    <div className={styles.chartBarWrapper}>
-                      <div className={styles.chartBar} style={{ width: '85%' }}>April (85%)</div>
-                      <div className={styles.chartBar} style={{ width: '70%', background: 'var(--accent-warning)' }}>May (70%)</div>
-                      <div className={styles.chartBar} style={{ width: '55%', background: 'var(--accent-danger)' }}>June (55%)</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          ))}
-          {isTyping && (
-            <motion.div className={`${styles.messageWrapper} ${styles.aiMessage}`}>
-              <div className={styles.avatar}>
-                <Bot size={20} />
-              </div>
-              <div className={styles.messageContent}>
-                <div className={styles.typingIndicator}>
-                  <span></span><span></span><span></span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+              <Menu size={22} color="#fff" />
+            </button>
+            <div>
+              <h1 className="gradient-text" style={{ fontSize: '2rem', marginBottom: '4px' }}>AI CEO Mode</h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Conversational intelligence and strategy.</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ width: '140px' }}>
+              <Dropdown
+                value={language}
+                onChange={(val) => setLanguage(val as string)}
+                options={languages.map(lang => ({ value: lang.code, label: lang.name }))}
+              />
+            </div>
+            <button 
+              className={styles.settingsBtn} 
+              onClick={() => setShowSettings(!showSettings)}
+              title="Configure AI API"
+            >
+              <Settings size={22} color={groqApiKey ? "var(--accent-success)" : "#9ca3af"} />
+            </button>
+          </div>
+        </header>
 
-        <div className={styles.inputArea}>
-          <button 
-            className={`${styles.iconBtn} ${isListening ? styles.listeningBtn : ''}`}
-            onClick={toggleListening}
-            title={isListening ? "Stop Listening" : "Start Voice Input"}
+        {showSettings && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className={styles.settingsPanel}
           >
-            {isListening ? <MicOff size={20} /> : <Mic size={20} />}
-          </button>
-          <input 
-            type="text" 
-            placeholder={isListening ? "Listening..." : "Ask your AI CEO..."} 
-            className={styles.textInput}
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-          />
-          <button className={styles.sendBtn} onClick={handleSend}>
-            <Send size={18} />
-          </button>
+            <div className={styles.settingsHeader}>
+              <h3>Cloud AI Integration (Groq + RAG)</h3>
+              <button onClick={() => setShowSettings(false)} className={styles.closeBtn}><X size={18} /></button>
+            </div>
+            <p>Enter your free Groq API key to unlock the true power of your AI CEO instead of using the mock offline demo. Your key is stored safely and locally in your browser.</p>
+            <div className={styles.inputGroup}>
+              <input 
+                type="password" 
+                placeholder="gsk_..." 
+                value={groqApiKey} 
+                onChange={(e) => handleSaveApiKey(e.target.value)} 
+                className={styles.apiKeyInput}
+              />
+            </div>
+          </motion.div>
+        )}
+
+        <div className={`glass-panel ${styles.chatInterface}`}>
+          <div className={styles.messagesArea}>
+            {messages.map((msg) => (
+              <motion.div 
+                key={msg.id}
+                className={`${styles.messageWrapper} ${msg.sender === 'user' ? styles.msgUser : styles.msgAi}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <div className={styles.avatar}>
+                  {msg.sender === 'ai' ? <Bot size={20} /> : <User size={20} />}
+                </div>
+                
+                <div className={styles.messageContent}>
+                  {msg.sender === 'ai' && (
+                    <button 
+                      className={styles.speakerBtn} 
+                      onClick={() => toggleSpeech(msg.id, msg.text)}
+                      title={speakingMessageId === msg.id ? "Stop Speaking" : "Read Aloud (TTS)"}
+                    >
+                      {speakingMessageId === msg.id ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                    </button>
+                  )}
+                  <p>{msg.text}</p>
+                </div>
+              </motion.div>
+            ))}
+            {isTyping && (
+              <motion.div className={`${styles.messageWrapper} ${styles.aiMessage}`}>
+                <div className={styles.avatar}>
+                  <Bot size={20} />
+                </div>
+                <div className={styles.messageContent}>
+                  <div className={styles.typingIndicator}>
+                    <span></span><span></span><span></span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className={styles.inputArea}>
+            <button 
+              className={`${styles.iconBtn} ${isListening ? styles.listeningBtn : ''}`}
+              onClick={toggleListening}
+              title={isListening ? "Stop Listening" : "Start Voice Input"}
+            >
+              {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+            </button>
+            <input 
+              type="text" 
+              placeholder={isListening ? "Listening..." : "Ask your AI CEO..."} 
+              className={styles.textInput}
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+            />
+            <button className={styles.sendBtn} onClick={handleSend}>
+              <Send size={18} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

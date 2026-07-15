@@ -1,10 +1,20 @@
 .container {
   display: flex;
+  height: calc(100vh - 80px); /* Adjust based on your top nav height */
+  margin: -2rem; /* Negate padding from MainLayout if necessary, or just adjust padding */
+  padding: 0;
+  color: white;
+  animation: fadeIn 0.5s ease-out;
+  background: var(--bg-main);
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
   flex-direction: column;
+  padding: 2rem;
+  overflow: hidden;
   height: 100%;
-  gap: 24px;
-  max-width: 1000px;
-  margin: 0 auto;
 }
 
 .header {
