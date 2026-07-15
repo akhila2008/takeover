@@ -42,7 +42,14 @@ export const generateIntelligenceContext = (documents: UploadedDocument[], previ
 
   // Deterministic generation based on docs
   documents.forEach(doc => {
-    const pr = Math.abs(doc.name.charCodeAt(0) * doc.name.charCodeAt(doc.name.length - 1)) / 10000;
+    const seedString = doc.name + (doc.month || '') + (doc.year || '');
+    let hash = 0;
+    for (let i = 0; i < seedString.length; i++) {
+      hash = ((hash << 5) - hash) + seedString.charCodeAt(i);
+      hash |= 0;
+    }
+    const pr = (Math.abs(hash) % 100) / 100; // 0.0 to 0.99
+    
     const lowerName = doc.name.toLowerCase();
     
     if (lowerName.includes('sales') || lowerName.includes('revenue')) {
@@ -54,20 +61,27 @@ export const generateIntelligenceContext = (documents: UploadedDocument[], previ
     } else if (lowerName.includes('customer') || lowerName.includes('client')) {
        newCustomers += Math.floor(pr * 500) + 100;
     } else {
-       // generic document provides slight bumps
-       revenue += 10000;
-       expenses += 5000;
+       // generic document provides slight bumps based on hash
+       revenue += 10000 + Math.floor(pr * 50000);
+       expenses += 5000 + Math.floor(pr * 20000);
     }
   });
 
   previousDocuments.forEach(doc => {
-     const pr = Math.abs(doc.name.charCodeAt(0) * doc.name.charCodeAt(doc.name.length - 1)) / 10000;
+     const seedString = doc.name + (doc.month || '') + (doc.year || '');
+     let hash = 0;
+     for (let i = 0; i < seedString.length; i++) {
+       hash = ((hash << 5) - hash) + seedString.charCodeAt(i);
+       hash |= 0;
+     }
+     const pr = (Math.abs(hash) % 100) / 100;
+     
      const lowerName = doc.name.toLowerCase();
      if (lowerName.includes('sales') || lowerName.includes('revenue')) {
        prevRevenue += Math.floor(pr * 200000) + 100000;
-    } else {
-       prevRevenue += 10000;
-    }
+     } else {
+       prevRevenue += 10000 + Math.floor(pr * 50000);
+     }
   });
 
   if (revenue === 0 && documents.length > 0) revenue = 150000; // Fallback
