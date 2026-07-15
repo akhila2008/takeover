@@ -23,38 +23,30 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // 1. Check Supabase first
-        const { data, error } = await supabase
-          .from('business_profiles')
-          .select('company_name')
-          .eq('id', 'default')
-          .single();
-          
-        if (data && data.company_name) {
-          setIsAuthenticated(true);
-          return;
-        }
-      } catch (err) {
-        console.log('Supabase check failed, falling back to local storage');
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsAuthenticated(true);
+      } else {
+        // Fallback for development if Supabase isn't hooked up
+        const localMock = localStorage.getItem('takeover_auth_mock');
+        setIsAuthenticated(!!localMock);
       }
+    });
 
-      // 2. Fallback to local storage
-      const saved = localStorage.getItem('takeover_business_profile');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.companyName || parsed.company_name) {
-          setIsAuthenticated(true);
-          return;
-        }
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setIsAuthenticated(true);
+      } else {
+        const localMock = localStorage.getItem('takeover_auth_mock');
+        setIsAuthenticated(!!localMock);
       }
+    });
 
-      // 3. Not authenticated
-      setIsAuthenticated(false);
-    };
-
-    checkAuth();
+    return () => subscription.unsubscribe();
   }, []);
 
   const renderContent = () => {
