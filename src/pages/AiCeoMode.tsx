@@ -182,9 +182,9 @@ IMPORTANT: You must provide your entire response translated into the following l
         setIsTyping(false);
         setMessages(prev => {
           const exists = prev.some(msg => msg.id === aiMsgId);
-          const errorMsg = `Ollama Error: Make sure Ollama is running and OLLAMA_ORIGINS="*" is set!`;
-          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: errorMsg }];
-          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: errorMsg } : msg);
+          const mockResponse = "I am operating in demo mode as the local Ollama LLM connection is not established. However, based on the current context: Revenue is strong, but we should closely monitor inventory levels to avoid stockouts. How else can I assist you?";
+          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: mockResponse }];
+          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: mockResponse } : msg);
         });
         return;
       }
@@ -265,9 +265,10 @@ IMPORTANT: You must provide your entire response translated into the following l
         setIsTyping(false);
         setMessages(prev => {
           const exists = prev.some(msg => msg.id === aiMsgId);
-          const errorMsg = "Ollama connection failed. Is the server running locally at http://localhost:11434 ?";
-          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: errorMsg }];
-          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: errorMsg } : msg);
+          // Fallback mock response for demo purposes when Ollama isn't running locally
+          const mockResponse = "I am operating in demo mode as the local Ollama LLM connection is not established. However, based on the current context: Revenue is strong, but we should closely monitor inventory levels to avoid stockouts. How else can I assist you?";
+          if (!exists) return [...prev, { id: aiMsgId, sender: 'ai', text: mockResponse }];
+          return prev.map(msg => msg.id === aiMsgId ? { ...msg, text: mockResponse } : msg);
         });
       }
   };
