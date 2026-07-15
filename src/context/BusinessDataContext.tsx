@@ -99,7 +99,13 @@ const safelyGetLocalStorage = () => {
   try {
     const saved = localStorage.getItem('takeover_business_data');
     if (!saved) return null;
-    return JSON.parse(saved);
+    const parsed = JSON.parse(saved);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      console.warn('Invalid storage type, resetting.');
+      localStorage.removeItem('takeover_business_data');
+      return null;
+    }
+    return parsed;
   } catch (e) {
     console.error('Local storage corrupted, resetting to defaults.', e);
     localStorage.removeItem('takeover_business_data');
@@ -127,7 +133,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
   });
 
   const [documents, setDocuments] = useState<UploadedDocument[]>(() => {
-    return savedData && savedData.documents ? savedData.documents : defaultState.documents;
+    return savedData && Array.isArray(savedData.documents) ? savedData.documents : defaultState.documents;
   });
 
   const [analysisMode, setAnalysisMode] = useState<'Monthly' | 'Annual'>(() => {
