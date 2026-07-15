@@ -7,4 +7,12 @@ if (supabaseUrl === 'https://placeholder.supabase.co') {
   console.error('Missing Supabase environment variables! App will load but database will fail.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+let client;
+try {
+  client = createClient(supabaseUrl, supabaseAnonKey);
+} catch (e) {
+  console.error('Invalid Supabase URL provided in environment variables, falling back to placeholder to prevent crash.', e);
+  client = createClient('https://placeholder.supabase.co', 'placeholder');
+}
+
+export const supabase = client;
