@@ -14,8 +14,8 @@ const baseDnaData = [
 ];
 
 export const DigitalTwin: React.FC = () => {
-  const { documents } = useBusinessData();
-  const hasData = documents.length > 0;
+  const { aiContext } = useBusinessData();
+  const hasData = aiContext !== null;
   
   const dnaData = hasData ? baseDnaData : baseDnaData.map(d => ({ ...d, A: 0 }));
   return (

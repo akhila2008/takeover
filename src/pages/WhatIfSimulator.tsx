@@ -7,7 +7,7 @@ import { useBusinessData } from '../context/BusinessDataContext';
 
 export const WhatIfSimulator: React.FC = () => {
   const { totalRevenue, monthlyExpenses, documents } = useBusinessData();
-  const hasData = documents.length > 0;
+  const hasData = aiContext !== null;
   const [priceMultiplier, setPriceMultiplier] = useState(1);
   const [marketingBudget, setMarketingBudget] = useState(1);
   const [staffing, setStaffing] = useState(1);

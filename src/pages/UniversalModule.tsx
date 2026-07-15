@@ -9,8 +9,8 @@ interface UniversalModuleProps {
 }
 
 export const UniversalModule: React.FC<UniversalModuleProps> = ({ title }) => {
-  const { documents } = useBusinessData();
-  const hasData = documents.length > 0;
+  const { aiContext } = useBusinessData();
+  const hasData = aiContext !== null;
   // Define custom configurations for different modules
   const moduleConfigs: Record<string, any> = {
     'Success Roadmap': {

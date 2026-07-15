@@ -16,7 +16,7 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
     financialScore, inventoryScore, customerScore, growthScore, operationalScore, confidenceScore, businessGrade,
     analysisMode, selectedMonth, selectedYear, aiContext
   } = useBusinessData();
-  const hasData = documents.length > 0;
+  const hasData = aiContext !== null;
 
   const [isWhyOpen, setIsWhyOpen] = useState(false);
   const [isConfOpen, setIsConfOpen] = useState(false);

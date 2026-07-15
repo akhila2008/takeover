@@ -15,8 +15,8 @@ interface Task {
 import { useBusinessData } from '../context/BusinessDataContext';
 
 export const ActionCenter: React.FC = () => {
-  const { documents } = useBusinessData();
-  const hasData = documents.length > 0;
+  const { aiContext } = useBusinessData();
+  const hasData = aiContext !== null;
 
   const [suggestedTasks] = useState<Task[]>([
     {

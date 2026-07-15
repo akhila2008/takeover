@@ -14,8 +14,8 @@ const baseRisks = [
 ];
 
 export const RiskRadar: React.FC = () => {
-  const { documents } = useBusinessData();
-  const hasData = documents.length > 0;
+  const { aiContext } = useBusinessData();
+  const hasData = aiContext !== null;
   
   // If no data, render 0 score risks
   const risks = hasData ? baseRisks : baseRisks.map(r => ({ ...r, score: 0, status: 'safe', desc: 'Awaiting data ingestion.' }));
