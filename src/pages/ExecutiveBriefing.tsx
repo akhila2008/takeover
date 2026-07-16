@@ -15,6 +15,7 @@ import { RevenueSourcesChart } from '../components/charts/RevenueSourcesChart';
 import { TopProductsChart } from '../components/charts/TopProductsChart';
 import { CashFlowChart } from '../components/charts/CashFlowChart';
 import { ForecastChart } from '../components/charts/ForecastChart';
+import { DownloadReportBtn } from '../components/report/DownloadReportBtn';
 
 interface Props {
   onNavigate?: (page: string) => void;
@@ -123,13 +124,16 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
           <h1 className="gradient-text" style={{ fontSize: '2.5rem', marginBottom: '8px' }}>Executive Briefing</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Advanced Business Intelligence Dashboard</p>
         </div>
-        <button 
-          className={`${styles.playBtn} ${isPlaying ? styles.playing : ''}`} 
-          onClick={toggleVoice}
-        >
-          {isPlaying ? <Square size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-          {isPlaying ? "Stop AI Voice" : "Play AI Briefing"}
-        </button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <DownloadReportBtn />
+          <button 
+            className={`${styles.playBtn} ${isPlaying ? styles.playing : ''}`} 
+            onClick={toggleVoice}
+          >
+            {isPlaying ? <Square size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+            {isPlaying ? "Stop AI Voice" : "Play AI Briefing"}
+          </button>
+        </div>
       </header>
 
       <motion.div 
@@ -200,15 +204,15 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
 
           {/* ROW 2: Revenue Trend & Profit vs Expenses */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-            <RevenueTrendChart />
-            <ProfitExpenseChart />
+            <div id="chart-revenueTrend"><RevenueTrendChart /></div>
+            <div id="chart-profitExpense"><ProfitExpenseChart /></div>
           </div>
 
           {/* ROW 3: Sales Growth, Inventory & Revenue Sources */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-            <SalesGrowthChart />
-            <InventoryStatusChart />
-            <RevenueSourcesChart />
+            <div id="chart-salesGrowth"><SalesGrowthChart /></div>
+            <div id="chart-inventory"><InventoryStatusChart /></div>
+            <div id="chart-revenueSources"><RevenueSourcesChart /></div>
           </div>
 
           {/* ROW 4: Top Products & Customer Acquisition */}
@@ -219,8 +223,12 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
 
           {/* ROW 5: Cash Flow & Forecast */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-            <CashFlowChart />
+            <div id="chart-cashFlow"><CashFlowChart /></div>
             <ForecastChart />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '40px', marginBottom: '20px' }}>
+            <DownloadReportBtn className={styles.secondaryDownload} />
           </div>
         </>
       )}
