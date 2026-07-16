@@ -19,6 +19,21 @@ import { PeriodComparison } from './pages/PeriodComparison';
 import { supabase } from './lib/supabaseClient';
 import { UserProfile } from './pages/UserProfile';
 
+// ONE-TIME CLEANUP: Remove August data from LocalStorage since Supabase sync failed
+try {
+  const saved = localStorage.getItem('takeover_business_data');
+  if (saved) {
+    let parsed = JSON.parse(saved);
+    if (parsed && Array.isArray(parsed.documents)) {
+      parsed.documents = parsed.documents.filter((d: any) => d.month !== 'August');
+      localStorage.setItem('takeover_business_data', JSON.stringify(parsed));
+    }
+  }
+} catch (e) {
+  console.error(e);
+}
+
+
 function App() {
   const [activePage, setActivePage] = useState('executive-briefing');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
