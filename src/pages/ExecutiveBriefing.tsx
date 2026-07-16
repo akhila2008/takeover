@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, IndianRupee, Users, Square, Play, TrendingUp } from 'lucide-react';
+import { Activity, IndianRupee, Users, Square, Play, TrendingUp, UploadCloud } from 'lucide-react';
 import styles from './ExecutiveBriefing.module.css';
 import { useBusinessData } from '../context/BusinessDataContext';
 
@@ -41,7 +41,6 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
 
   // Dynamic AI Text Generation
   const generateDynamicBriefing = () => {
-    if (!isLoaded) return "Synchronizing business intelligence data...";
     if (!hasData || !aiContext) return "Upload a document in Document Intel to generate a comprehensive AI Business Health analysis.";
     const periodStr = analysisMode === 'Monthly' ? `${selectedMonth} ${selectedYear}` : `Year ${selectedYear}`;
     let text = `${periodStr} analysis complete. Revenue reached ${formatCurrency(aiContext.revenue)} while operating expenses were ${formatCurrency(aiContext.expenses)}. `;
@@ -180,18 +179,19 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
         </p>
       </motion.div>
 
-      {!isLoaded ? (
-        <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', marginTop: '24px' }}>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-            <Activity className="spinner" size={20} />
-            Loading business metrics from securely encrypted storage...
-          </p>
-        </div>
-      ) : !hasData && !isAnalyzing ? (
-        <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', marginTop: '24px' }}>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>
+      {!hasData && !isAnalyzing ? (
+        <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', marginTop: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '24px' }}>
             No data found for the selected period. Please upload documents in Document Intel for {selectedMonth} {selectedYear} to unlock the Executive Briefing.
           </p>
+          <button 
+            className="action-btn"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '1.1rem' }}
+            onClick={() => onNavigate && onNavigate('Document Intel')}
+          >
+            <UploadCloud size={20} />
+            Upload Files
+          </button>
         </div>
       ) : (
         <>

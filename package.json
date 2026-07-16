@@ -1,5 +1,5 @@
 {
-  "name": "takeover",
+  "name": "pulseai",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -15,6 +15,7 @@
     "framer-motion": "^12.42.2",
     "html2canvas": "^1.4.1",
     "lucide-react": "^1.23.0",
+    "pdfjs-dist": "^6.1.200",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "recharts": "^3.9.2"

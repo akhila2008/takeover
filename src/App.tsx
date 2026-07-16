@@ -73,7 +73,7 @@ function App() {
         return <ExecutiveBriefing onNavigate={setActivePage} />;
       case 'action-center':
         return <ActionCenter />;
-      case 'ai-ceo-mode':
+      case 'pulseai':
         return <AiCeoMode />;
       case 'digital-twin':
         return <DigitalTwin />;

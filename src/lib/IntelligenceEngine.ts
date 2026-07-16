@@ -1,5 +1,12 @@
 import type { UploadedDocument } from '../context/BusinessDataContext';
 
+export interface ProductData {
+  name: string;
+  quantity: number;
+  revenue: number;
+  category?: string;
+}
+
 export interface AIContextObject {
   healthScore: number;
   grade: string;
@@ -27,6 +34,13 @@ export interface AIContextObject {
     growth: string;
     operations: string;
   }
+  topProducts?: ProductData[];
+  bottomProducts?: ProductData[];
+  highestSoldProduct?: ProductData;
+  lowestSoldProduct?: ProductData;
+  highestRevenueProduct?: ProductData;
+  lowestRevenueProduct?: ProductData;
+  revenueSources?: { name: string, value: number, color: string }[];
 }
 
 export const generateIntelligenceContext = (
@@ -37,7 +51,7 @@ export const generateIntelligenceContext = (
 ): AIContextObject | null => {
   if (documents.length === 0) return null;
 
-  // 1. Business KPI Engine
+  // Business KPI Engine
   let revenue = 0;
   let expenses = 0;
   let newCustomers = 0;
@@ -45,8 +59,87 @@ export const generateIntelligenceContext = (
   
   let prevRevenue = 0;
 
-  // Deterministic generation based on docs
+  // Real data parsed metrics
+  const productDataMap = new Map<string, ProductData>();
+  const categoryRevenueMap = new Map<string, number>();
+  let hasRealProductData = false;
+
   documents.forEach(doc => {
+    // 1. Attempt to parse real data if available
+    if (doc.rawContent) {
+      try {
+        const lines = doc.rawContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length > 1) {
+          let headerLineIdx = -1;
+          let productIdx = -1;
+          let salesIdx = -1;
+          let qtyIdx = -1;
+          let catIdx = -1;
+
+          // Scan first 20 lines for headers (PDFs often have titles/metadata at the top)
+          for (let i = 0; i < Math.min(20, lines.length); i++) {
+            const tempHeaders = lines[i].toLowerCase().split(',').map(h => h.trim());
+            const pIdx = tempHeaders.findIndex(h => h.includes('product') || h.includes('item') || h.includes('name'));
+            const sIdx = tempHeaders.findIndex(h => h.includes('sales') || h.includes('revenue') || h.includes('total') || h.includes('price'));
+            const qIdx = tempHeaders.findIndex(h => h.includes('quantity') || h.includes('qty'));
+            const cIdx = tempHeaders.findIndex(h => h.includes('category') || h.includes('source') || h.includes('type'));
+            
+            if (pIdx !== -1 && (sIdx !== -1 || qIdx !== -1)) {
+              headerLineIdx = i;
+              productIdx = pIdx;
+              salesIdx = sIdx;
+              qtyIdx = qIdx;
+              catIdx = cIdx;
+              break;
+            }
+          }
+          
+          if (headerLineIdx !== -1) {
+            hasRealProductData = true;
+            console.log(`[Backend Log] Successfully detected product tabular data in ${doc.name}. Parsing rows...`);
+            
+            for (let i = headerLineIdx + 1; i < lines.length; i++) {
+              // Extremely simple CSV split that ignores commas in quotes
+              const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
+              if (cols.length > productIdx) {
+                const pName = cols[productIdx];
+                if (!pName) continue;
+                
+                let rev = 0;
+                let qty = 0;
+                let cat = "Uncategorized";
+
+                if (salesIdx !== -1 && cols.length > salesIdx) {
+                  rev = parseFloat(cols[salesIdx].replace(/[^0-9.-]+/g, '')) || 0;
+                }
+                if (qtyIdx !== -1 && cols.length > qtyIdx) {
+                  qty = parseFloat(cols[qtyIdx].replace(/[^0-9.-]+/g, '')) || 0;
+                }
+                if (catIdx !== -1 && cols.length > catIdx && cols[catIdx]) {
+                  cat = cols[catIdx];
+                }
+                
+                if (rev > 0 || qty > 0) {
+                  const existing = productDataMap.get(pName) || { name: pName, quantity: 0, revenue: 0, category: cat };
+                  existing.quantity += qty;
+                  existing.revenue += rev;
+                  existing.category = existing.category === "Uncategorized" ? cat : existing.category;
+                  productDataMap.set(pName, existing);
+
+                  if (rev > 0) {
+                    categoryRevenueMap.set(cat, (categoryRevenueMap.get(cat) || 0) + rev);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse document content", e);
+      }
+    }
+
+    // 2. Deterministic mock generation for high-level KPIs based on doc name
     const seedString = doc.name + selectedMonth + selectedYear;
     let hash = 0;
     for (let i = 0; i < seedString.length; i++) {
@@ -66,7 +159,6 @@ export const generateIntelligenceContext = (
     } else if (lowerName.includes('customer') || lowerName.includes('client')) {
        newCustomers += Math.floor(pr * 500) + 100;
     } else {
-       // generic document provides slight bumps based on hash
        revenue += 10000 + Math.floor(pr * 50000);
        expenses += 5000 + Math.floor(pr * 20000);
     }
@@ -180,6 +272,43 @@ export const generateIntelligenceContext = (
   if (topRisks.length === 0) topRisks.push("Macroeconomic Volatility");
   if (recommendations.length === 0) recommendations.push("Maintain current operational efficiency strategies.");
 
+  let topProducts: ProductData[] = [];
+  let bottomProducts: ProductData[] = [];
+  let highestSoldProduct: ProductData | undefined;
+  let lowestSoldProduct: ProductData | undefined;
+  let highestRevenueProduct: ProductData | undefined;
+  let lowestRevenueProduct: ProductData | undefined;
+  let revenueSources: { name: string, value: number, color: string }[] | undefined;
+
+  if (hasRealProductData && productDataMap.size > 0) {
+    const allProducts = Array.from(productDataMap.values());
+    
+    // Quantity-based metrics
+    const sortedByQty = [...allProducts].sort((a, b) => b.quantity - a.quantity);
+    topProducts = sortedByQty.slice(0, 5);
+    bottomProducts = [...sortedByQty].reverse().slice(0, 5);
+    highestSoldProduct = sortedByQty[0];
+    lowestSoldProduct = sortedByQty[sortedByQty.length - 1];
+
+    // Revenue-based metrics
+    const sortedByRev = [...allProducts].sort((a, b) => b.revenue - a.revenue);
+    highestRevenueProduct = sortedByRev[0];
+    lowestRevenueProduct = sortedByRev[sortedByRev.length - 1];
+
+    console.log("[Backend Log] Extracted Products:", allProducts.length);
+    console.log("[Backend Log] Product Quantities (Top 3):", sortedByQty.slice(0, 3).map(p => `${p.name}: ${p.quantity}`));
+    console.log("[Backend Log] Revenue by Product (Top 3):", sortedByRev.slice(0, 3).map(p => `${p.name}: ₹${p.revenue}`));
+    console.log("[Backend Log] Highest Sold:", highestSoldProduct?.name);
+    console.log("[Backend Log] Highest Revenue:", highestRevenueProduct?.name);
+  }
+
+  if (categoryRevenueMap.size > 0) {
+    const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#6366f1'];
+    revenueSources = Array.from(categoryRevenueMap.entries())
+      .map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }))
+      .sort((a, b) => b.value - a.value);
+  }
+
   return {
     healthScore,
     grade,
@@ -206,6 +335,13 @@ export const generateIntelligenceContext = (
       customer: custReason,
       growth: groReason,
       operations: opReason
-    }
+    },
+    topProducts: hasRealProductData ? topProducts : undefined,
+    bottomProducts: hasRealProductData ? bottomProducts : undefined,
+    highestSoldProduct: hasRealProductData ? highestSoldProduct : undefined,
+    lowestSoldProduct: hasRealProductData ? lowestSoldProduct : undefined,
+    highestRevenueProduct: hasRealProductData ? highestRevenueProduct : undefined,
+    lowestRevenueProduct: hasRealProductData ? lowestRevenueProduct : undefined,
+    revenueSources: categoryRevenueMap.size > 0 ? revenueSources : undefined
   };
 };

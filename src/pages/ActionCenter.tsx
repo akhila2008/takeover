@@ -83,7 +83,9 @@ export const ActionCenter: React.FC = () => {
         <span className={styles.taskType}>{task.type}</span>
         
         {columnType === 'suggested' && (
-          <button className={styles.actionBtn}>Execute <Play size={14} fill="currentColor" /></button>
+          <span className={styles.statusLabel} style={{ color: 'var(--accent-primary)' }}>
+            <AlertTriangle size={14} /> New Suggestion
+          </span>
         )}
         {columnType === 'active' && (
           <span className={styles.statusLabel} style={{ color: 'var(--accent-info)' }}>

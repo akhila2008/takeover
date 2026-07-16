@@ -85,7 +85,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onComplete }) => {
           <p className={styles.subtitle}>
             {isLogin 
               ? 'Enter your credentials to access your dashboard.' 
-              : 'Sign up to initialize your AI CEO dashboard.'}
+              : 'Sign up to initialize your PulseAI dashboard.'}
           </p>
 
           {errorMsg && (

@@ -3,6 +3,11 @@ import { UploadCloud, FileText, CheckCircle, Loader2, Database, X, BarChart3, Ar
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from './DocumentIntel.module.css';
 import { useBusinessData } from '../context/BusinessDataContext';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Use CDN for worker to avoid Vite build issues
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
 
 interface Props {
   onNavigate?: (page: string) => void;
@@ -12,7 +17,7 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
   const { 
     documents, addDocument, updateDocumentStatus, 
     updateMetricsFromDocument, removeDocument, generateSnapshot,
-    selectedMonth, selectedYear, analysisMode, isLoaded, beginAnalysis
+    selectedMonth, selectedYear, analysisMode, isLoaded, beginAnalysis, analysisProgress, setAnalysisProgress
   } = useBusinessData();
   const [dragActive, setDragActive] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -26,7 +31,7 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
     }
   });
 
-  const isAnalyzing = filteredDocs.some(d => d.status === 'parsing');
+  const isAnalyzing = filteredDocs.some(d => d.status === 'parsing') || (analysisProgress.stage !== 'idle' && analysisProgress.stage !== 'complete');
   const hasAnalyzedDocs = filteredDocs.length > 0 && !isAnalyzing;
 
   const handleDrag = (e: React.DragEvent) => {
@@ -39,7 +44,7 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
     }
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     const docId = `doc-${Date.now()}`;
     const fileDate = new Date(file.lastModified || Date.now());
     const day = fileDate.getDate();
@@ -48,29 +53,87 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
     const month = selectedMonth;
     const year = selectedYear;
 
-    addDocument({
+    let rawContent: string | undefined = undefined;
+
+    // Read file content for data extraction
+    try {
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          
+          // Group items by Y coordinate (rounded to nearest 5 to avoid slight misalignment)
+          const linesMap = new Map<number, any[]>();
+          textContent.items.forEach((item: any) => {
+            if (!item.str || item.str.trim() === '') return;
+            const y = Math.round(item.transform[5] / 5) * 5;
+            if (!linesMap.has(y)) linesMap.set(y, []);
+            linesMap.get(y)!.push(item);
+          });
+
+          // Sort Y coordinates descending (PDF Y=0 is at bottom)
+          const sortedY = Array.from(linesMap.keys()).sort((a, b) => b - a);
+
+          sortedY.forEach(y => {
+            const itemsOnLine = linesMap.get(y)!;
+            // Sort by X coordinate ascending
+            itemsOnLine.sort((a, b) => a.transform[4] - b.transform[4]);
+            
+            // Join with commas to simulate CSV structure
+            const lineStr = itemsOnLine.map(item => {
+                const str = item.str.trim();
+                return str.includes(',') ? `"${str}"` : str;
+            }).join(',');
+            
+            fullText += lineStr + '\n';
+          });
+        }
+        rawContent = fullText;
+      } else {
+        rawContent = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+      }
+    } catch (err) {
+      console.error("Failed to read file content:", err);
+    }
+
+    let fileHash = '';
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(file.name + file.size + (rawContent ? rawContent.substring(0, 1000) : ''));
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      fileHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (err) {
+      console.warn("Failed to generate hash, falling back to name/size", err);
+      fileHash = file.name + '-' + file.size;
+    }
+
+    const newDoc = {
       id: docId,
       name: file.name,
       type: file.type || 'application/octet-stream',
-      status: 'parsing',
+      status: 'analyzed' as const,
       dateUploaded: new Date().toISOString(),
       day,
       month,
-      year
-    });
+      year,
+      rawContent,
+      hash: fileHash
+    };
 
-    // Immediately mark as analyzed so context updates
-    updateDocumentStatus(docId, 'analyzed');
+    addDocument(newDoc);
     updateMetricsFromDocument(file.name);
     
-    // Auto-navigate to dashboard to watch progressive rendering
-    if (onNavigate) {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        onNavigate('executive-briefing');
-        beginAnalysis();
-      }, 400); // Small delay for transition
-    }
+    // Start processing simulation without navigating
+    beginAnalysis(newDoc);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -94,7 +157,12 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
     setIsTransitioning(true);
     setTimeout(() => {
       onNavigate('executive-briefing');
+      setAnalysisProgress({ isAnalyzing: false, stage: 'idle', progressPercent: 0 });
     }, 400); // 400ms transition delay
+  };
+
+  const handleUploadAnother = () => {
+    setAnalysisProgress({ isAnalyzing: false, stage: 'idle', progressPercent: 0 });
   };
 
   return (
@@ -204,7 +272,7 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
                     {isAnalyzing ? (
                       <>
                         <Loader2 size={18} className={styles.spinnerBtn} />
-                        Analyzing...
+                        Processing Analysis...
                       </>
                     ) : (
                       <>

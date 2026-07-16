@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Bot, User, BarChart2, Mic, MicOff, Volume2, VolumeX, Settings, X, Menu } from 'lucide-react';
+import { Send, Bot, User, BarChart2, Mic, MicOff, Volume2, VolumeX, Settings, X, Menu, BrainCircuit, AlertTriangle } from 'lucide-react';
 import styles from './AiCeoMode.module.css';
 import { useBusinessData } from '../context/BusinessDataContext';
 import { Dropdown } from '../components/ui/Dropdown';
@@ -23,7 +23,10 @@ declare global {
 }
 
 export const AiCeoMode: React.FC = () => {
-  const { healthScore, totalRevenue, activeCustomers, monthlyExpenses, cashFlow, documents, aiContext } = useBusinessData();
+  const { 
+    healthScore, totalRevenue, activeCustomers, monthlyExpenses, cashFlow, documents, aiContext,
+    monthlyChartData, topProductsData, revenueSourcesData, inventoryChartData 
+  } = useBusinessData();
   
   // Optimistic initial load from cache
   const [conversations, setConversations] = useState<Conversation[]>(getLocalConversations());
@@ -91,7 +94,7 @@ export const AiCeoMode: React.FC = () => {
         setMessages([{
           id: `ai-intro-${Date.now()}`,
           sender: 'ai',
-          text: 'Hello. I am your AI CEO. I am currently monitoring all real-time data metrics. What strategic objective shall we focus on today?'
+          text: 'Hello. I am PulseAI. I am currently monitoring all real-time data metrics. What strategic objective shall we focus on today?'
         }]);
       } else {
         setMessages(data.map(m => ({
@@ -255,25 +258,123 @@ export const AiCeoMode: React.FC = () => {
 CRITICAL RULES:
 1. Speak exactly like a real human having a direct conversation. Use a warm, natural, and highly realistic conversational tone. 
 2. DO NOT use ANY markdown formatting (no asterisks **, no hash tags #, no bullet points). Keep responses concise.
-3. You MUST NEVER calculate business health, scores, revenue, or metrics. You MUST ONLY explain the provided JSON object.
-4. NEVER invent risks, weaknesses, strengths, or inventory problems. If information is not in the JSON, say "Insufficient data".
+3. You MUST NEVER calculate business health, scores, revenue, or metrics. You MUST ONLY explain the provided JSON object and any Business Data explicitly provided by the user.
+4. NEVER invent risks, weaknesses, strengths, or inventory problems. If information is not in the JSON or the user's prompt, say "Insufficient data".
 5. Every recommendation must be supported by the supplied metrics. Never contradict numerical values.
 6. ALL financial numbers in the data are in Indian Rupees (INR). You MUST ALWAYS use the ₹ symbol or the word "Rupees" when discussing money. Never use dollars or $.
 
 CURRENT BUSINESS INTELLIGENCE CONTEXT (STRICT TRUTH):
-${JSON.stringify(aiContext || { status: 'No data' }, null, 2)}
+${JSON.stringify({
+  aiContext: aiContext || { status: 'No data' },
+  topProducts: topProductsData || [],
+  monthlySales: monthlyChartData ? monthlyChartData.filter(m => m.actual) : [],
+  revenueSources: revenueSourcesData || []
+}, null, 2)}
 
 IMPORTANT: You must provide your entire response translated into the following language code: ${language}`;
       
       const messagesPayload = chatHistory
-        .filter(msg => msg.id !== '1' && msg.id !== aiMsgId && msg.text && !msg.text.includes('Hello. I am your AI CEO.')) 
+        .filter(msg => msg.id !== '1' && msg.id !== aiMsgId && msg.text && !msg.text.includes('Hello. I am PulseAI.')) 
         .map(msg => ({
           role: msg.sender === 'ai' ? 'assistant' : 'user',
           content: msg.text
         }));
 
+      // --- Query Classification and Data Interception Engine ---
+      const interceptAnalyticalQuery = (query: string): string | null => {
+        const q = query.toLowerCase();
+        
+        // 1. Product Analysis (aiContext)
+        if (q.includes('product') || q.includes('project') || q.includes('item') || q.includes('sold') || q.includes('revenue')) {
+          if (!aiContext || (!aiContext.topProducts && !aiContext.highestSoldProduct && !aiContext.highestRevenueProduct)) {
+             return "The uploaded data does not contain enough information to determine product performance.";
+          }
+          
+          if (q.includes('highest') || q.includes('best') || q.includes('most') || q.includes('top') || q.includes('fast')) {
+            if (q.includes('revenue') || q.includes('gross') || q.includes('money')) {
+              if (aiContext.highestRevenueProduct) {
+                return `Highest Revenue Product:\nProduct Name: ${aiContext.highestRevenueProduct.name}\nRevenue: ₹${aiContext.highestRevenueProduct.revenue.toLocaleString()}`;
+              }
+            } else if (aiContext.highestSoldProduct) {
+              return `Highest Sold Product:\nProduct Name: ${aiContext.highestSoldProduct.name}\nQuantity Sold: ${aiContext.highestSoldProduct.quantity.toLocaleString()}`;
+            }
+          }
+          if (q.includes('lowest') || q.includes('worst') || q.includes('least') || q.includes('bottom') || q.includes('slow')) {
+            if (q.includes('revenue') || q.includes('gross') || q.includes('money')) {
+              if (aiContext.lowestRevenueProduct) {
+                return `Lowest Revenue Product:\nProduct Name: ${aiContext.lowestRevenueProduct.name}\nRevenue: ₹${aiContext.lowestRevenueProduct.revenue.toLocaleString()}`;
+              }
+            } else if (aiContext.lowestSoldProduct) {
+              return `Lowest Sold Product:\nProduct Name: ${aiContext.lowestSoldProduct.name}\nQuantity Sold: ${aiContext.lowestSoldProduct.quantity.toLocaleString()}`;
+            }
+          }
+        }
+        
+        // 2. Time/Month Analysis (monthlyChartData)
+        if (q.includes('month') || q.includes('when')) {
+          if (!monthlyChartData || monthlyChartData.length === 0) return "The uploaded data does not contain enough information to determine monthly trends.";
+          
+          const validMonths = monthlyChartData.filter(m => m.actual && m.revenue !== null);
+          if (validMonths.length === 0) return "There is no actual monthly data available to answer this question.";
+          
+          if (q.includes('revenue') || q.includes('sales')) {
+            const sortedRev = [...validMonths].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+            if (q.includes('highest') || q.includes('best') || q.includes('most')) {
+              return `Highest Revenue Month:\nMonth: ${sortedRev[0].month}\nRevenue: ₹${(sortedRev[0].revenue || 0).toLocaleString()}`;
+            }
+            if (q.includes('lowest') || q.includes('worst') || q.includes('least')) {
+              const lowest = sortedRev[sortedRev.length - 1];
+              return `Lowest Revenue Month:\nMonth: ${lowest.month}\nRevenue: ₹${(lowest.revenue || 0).toLocaleString()}`;
+            }
+          }
+          if (q.includes('profit')) {
+            const sortedProfit = [...validMonths].sort((a, b) => (b.profit || 0) - (a.profit || 0));
+            if (q.includes('highest') || q.includes('best') || q.includes('most')) {
+              return `Highest Profit Month:\nMonth: ${sortedProfit[0].month}\nProfit: ₹${(sortedProfit[0].profit || 0).toLocaleString()}`;
+            }
+            if (q.includes('lowest') || q.includes('worst') || q.includes('least')) {
+              const lowest = sortedProfit[sortedProfit.length - 1];
+              return `Lowest Profit Month:\nMonth: ${lowest.month}\nProfit: ₹${(lowest.profit || 0).toLocaleString()}`;
+            }
+          }
+          if (q.includes('expense') || q.includes('cost')) {
+            const sortedExp = [...validMonths].sort((a, b) => (b.expenses || 0) - (a.expenses || 0));
+            if (q.includes('highest') || q.includes('most')) {
+              return `Highest Expense Month:\nMonth: ${sortedExp[0].month}\nExpenses: ₹${(sortedExp[0].expenses || 0).toLocaleString()}`;
+            }
+            if (q.includes('lowest') || q.includes('least')) {
+              const lowest = sortedExp[sortedExp.length - 1];
+              return `Lowest Expense Month:\nMonth: ${lowest.month}\nExpenses: ₹${(lowest.expenses || 0).toLocaleString()}`;
+            }
+          }
+        }
+        
+        // 3. Category/Source Analysis (revenueSourcesData)
+        if (q.includes('category') || q.includes('source') || q.includes('channel')) {
+          if (!revenueSourcesData || revenueSourcesData.length === 0) return "The uploaded data does not contain enough information to determine category performance.";
+          
+          const sortedCat = [...revenueSourcesData].sort((a, b) => b.value - a.value);
+          if (q.includes('highest') || q.includes('best') || q.includes('most')) {
+            return `Best Performing Category:\nCategory Name: ${sortedCat[0].name}\nRevenue Generated: ₹${sortedCat[0].value.toLocaleString()}`;
+          }
+          if (q.includes('lowest') || q.includes('worst') || q.includes('least')) {
+            const lowest = sortedCat[sortedCat.length - 1];
+            return `Worst Performing Category:\nCategory Name: ${lowest.name}\nRevenue Generated: ₹${lowest.value.toLocaleString()}`;
+          }
+        }
+
+        return null;
+      };
+
+      const analyticalData = interceptAnalyticalQuery(userText);
+      let augmentedUserPrompt = userText;
+      
+      if (analyticalData) {
+        augmentedUserPrompt = `Business Data:\n${analyticalData}\n\nQuestion:\n${userText}\n\nInstruction: Answer the user's question by explicitly stating the intercepted Business Data above, then explain why this metric might be the case and provide strategic recommendations to improve it. Do not attempt to calculate the numbers yourself, trust the Business Data provided completely.`;
+      }
+
       messagesPayload.unshift({ role: 'system', content: systemPrompt });
-      messagesPayload.push({ role: 'user', content: userText });
+      messagesPayload.push({ role: 'user', content: augmentedUserPrompt });
 
       const url = groqApiKey ? 'https://api.groq.com/openai/v1/chat/completions' : 'http://localhost:11434/api/chat';
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -436,9 +537,12 @@ IMPORTANT: You must provide your entire response translated into the following l
             >
               <Menu size={22} color="#fff" />
             </button>
+            <div className={styles.headerTitle}>
+              <BrainCircuit className={styles.headerIcon} />
+              <h1 className="gradient-text" style={{ fontSize: '2rem', marginBottom: '4px' }}>PulseAI</h1>
+            </div>
             <div>
-              <h1 className="gradient-text" style={{ fontSize: '2rem', marginBottom: '4px' }}>AI CEO Mode</h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Conversational intelligence and strategy.</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Your AI Business Intelligence Assistant</p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -469,7 +573,10 @@ IMPORTANT: You must provide your entire response translated into the following l
               <h3>Cloud AI Integration (Groq + RAG)</h3>
               <button onClick={() => setShowSettings(false)} className={styles.closeBtn}><X size={18} /></button>
             </div>
-            <p>Enter your free Groq API key to unlock the true power of your AI CEO instead of using the mock offline demo. Your key is stored safely and locally in your browser.</p>
+            <div className={styles.apiWarning}>
+              <AlertTriangle size={20} className={styles.warningIcon} />
+              <p>Enter your free Groq API key to unlock the true power of PulseAI instead of using the mock offline demo. Your key is stored safely and locally in your browser.</p>
+            </div>
             <div className={styles.inputGroup}>
               <input 
                 type="password" 
@@ -535,7 +642,7 @@ IMPORTANT: You must provide your entire response translated into the following l
             </button>
             <input 
               type="text" 
-              placeholder={isListening ? "Listening..." : "Ask your AI CEO..."} 
+              placeholder={isListening ? "Listening..." : "Ask PulseAI..."} 
               className={styles.textInput}
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}

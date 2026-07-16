@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, ChevronLeft, ChevronRight, History } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBusinessData } from '../../context/BusinessDataContext';
 import { Dropdown } from '../ui/Dropdown';
 import styles from './TimeFilterBar.module.css';
@@ -111,13 +111,6 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
           style={{ opacity: (analysisMode === 'Monthly' && selectedYear === currentYear && MONTHS.indexOf(selectedMonth) >= currentMonthIndex) || (analysisMode === 'Annual' && selectedYear >= currentYear) ? 0.3 : 1, cursor: (analysisMode === 'Monthly' && selectedYear === currentYear && MONTHS.indexOf(selectedMonth) >= currentMonthIndex) || (analysisMode === 'Annual' && selectedYear >= currentYear) ? 'not-allowed' : 'pointer' }}
         >
           <ChevronRight size={18} />
-        </button>
-      </div>
-      
-      <div className={styles.rightGroup}>
-        <button className={styles.actionBtn} onClick={() => onNavigate?.('business-history')}>
-          <History size={16} />
-          <span>History</span>
         </button>
       </div>
     </div>

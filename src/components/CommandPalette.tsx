@@ -75,7 +75,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
           ) : (
             <div className={styles.noResults}>
               <p>No commands found for "{query}"</p>
-              <span className={styles.aiHint}>Press Enter to ask AI CEO directly</span>
+              <span className={styles.aiHint}>Press Enter to ask PulseAI directly</span>
             </div>
           )}
         </div>

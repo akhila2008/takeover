@@ -6,7 +6,7 @@ import styles from './UserProfile.module.css';
 export const UserProfile: React.FC = () => {
   const [user, setUser] = useState<{ name: string; email: string; role: string }>({
     name: 'CEO',
-    email: 'ceo@takeover.ai',
+    email: 'ceo@pulseai.com',
     role: 'Administrator'
   });
 
@@ -15,7 +15,7 @@ export const UserProfile: React.FC = () => {
       if (session?.user) {
         setUser({
           name: session.user.user_metadata?.full_name || 'CEO',
-          email: session.user.email || 'ceo@takeover.ai',
+          email: session.user.email || 'ceo@pulseai.com',
           role: 'Administrator'
         });
       } else {
@@ -24,7 +24,7 @@ export const UserProfile: React.FC = () => {
           const parsed = JSON.parse(localMock);
           setUser({
             name: parsed.fullName || 'CEO',
-            email: parsed.email || 'ceo@takeover.ai',
+            email: parsed.email || 'ceo@pulseai.com',
             role: 'Administrator'
           });
         }

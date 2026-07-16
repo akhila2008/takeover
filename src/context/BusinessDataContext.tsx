@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import type { ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { generateIntelligenceContext } from '../lib/IntelligenceEngine';
-import type { AIContextObject } from '../lib/IntelligenceEngine';
+import type { AIContextObject, ProductData } from '../lib/IntelligenceEngine';
 
 export interface UploadedDocument {
   id: string;
@@ -13,6 +13,8 @@ export interface UploadedDocument {
   day: number;
   month: string;
   year: number;
+  rawContent?: string;
+  hash?: string;
 }
 
 export type AnalysisStage = 'idle' | 'reading' | 'kpis' | 'charts' | 'insights' | 'summary' | 'complete';
@@ -36,7 +38,7 @@ export interface MonthlyFinancialData {
 export interface InventoryData { name: string; value: number; color: string; }
 export interface CustomerData { month: string; new: number | null; returning: number | null; }
 export interface RevenueSourceData { name: string; value: number; color: string; }
-export interface TopProductData { name: string; sales: number; }
+export type TopProductData = ProductData;
 
 interface BusinessDataState {
   healthScore: number;
@@ -81,7 +83,8 @@ interface BusinessDataState {
   removeDocument: (id: string) => void;
   generateSnapshot: () => void;
   analysisProgress: AnalysisProgress;
-  beginAnalysis: () => void;
+  setAnalysisProgress: React.Dispatch<React.SetStateAction<AnalysisProgress>>;
+  beginAnalysis: (newDoc?: UploadedDocument) => void;
 }
 
 const nowIST = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
@@ -121,6 +124,7 @@ const defaultState: BusinessDataState = {
   topProductsData: [],
   isLoaded: false,
   analysisProgress: { isAnalyzing: false, stage: 'idle', progressPercent: 0 },
+  setAnalysisProgress: () => {},
   setAnalysisMode: () => {},
   setSelectedMonth: () => {},
   setSelectedYear: () => {},
@@ -188,28 +192,308 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [isLoaded, setIsLoaded] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress>({ isAnalyzing: false, stage: 'idle', progressPercent: 0 });
 
-  const beginAnalysis = () => {
-    setAnalysisProgress({ isAnalyzing: true, stage: 'reading', progressPercent: 10 });
+  const [aiContext, setAiContext] = useState<AIContextObject | null>(() => {
+    return savedData && savedData.aiContext ? savedData.aiContext : defaultState.aiContext;
+  });
+  const [monthlyChartData, setMonthlyChartData] = useState<MonthlyFinancialData[]>(() => {
+    return savedData && savedData.monthlyChartData ? savedData.monthlyChartData : defaultState.monthlyChartData;
+  });
+  const [inventoryChartData, setInventoryChartData] = useState<InventoryData[]>(() => {
+    return savedData && savedData.inventoryChartData ? savedData.inventoryChartData : defaultState.inventoryChartData;
+  });
+  const [customerChartData, setCustomerChartData] = useState<CustomerData[]>(() => {
+    return savedData && savedData.customerChartData ? savedData.customerChartData : defaultState.customerChartData;
+  });
+  const [revenueSourcesData, setRevenueSourcesData] = useState<RevenueSourceData[]>(() => {
+    return savedData && savedData.revenueSourcesData ? savedData.revenueSourcesData : defaultState.revenueSourcesData;
+  });
+  const [topProductsData, setTopProductsData] = useState<TopProductData[]>(() => {
+    return savedData && savedData.topProductsData ? savedData.topProductsData : defaultState.topProductsData;
+  });
+
+  // Load analysis for the current period from cache instead of regenerating
+  useEffect(() => {
+    if (!isLoaded) return;
     
-    setTimeout(() => {
-      setAnalysisProgress({ isAnalyzing: true, stage: 'kpis', progressPercent: 30 });
-    }, 1500);
+    const loadCachedAnalysis = async () => {
+      const periodId = analysisMode === 'Monthly' ? `Monthly-${selectedMonth}-${selectedYear}` : `Annual-${selectedYear}`;
+      
+      try {
+        const { data, error } = await supabase
+          .from('ai_analysis_cache')
+          .select('*')
+          .eq('id', periodId)
+          .single();
+          
+        if (data && !error && data.status === 'completed') {
+          console.log("[Cache] Loaded analysis from Supabase for", periodId);
+          if (data.metrics) {
+             setHealthScore(data.metrics.healthScore || 0);
+             setTotalRevenue(data.metrics.totalRevenue || 0);
+             setActiveCustomers(data.metrics.activeCustomers || 0);
+             setMonthlyExpenses(data.metrics.monthlyExpenses || 0);
+             setCashFlow(data.metrics.cashFlow || 0);
+             setFinancialScore(data.metrics.financialScore || 0);
+             setInventoryScore(data.metrics.inventoryScore || 0);
+             setCustomerScore(data.metrics.customerScore || 0);
+             setGrowthScore(data.metrics.growthScore || 0);
+             setOperationalScore(data.metrics.operationalScore || 0);
+             setConfidenceScore(data.metrics.confidenceScore || 0);
+             setBusinessGrade(data.metrics.businessGrade || 'Critical');
+          }
+          if (data.charts) {
+             setMonthlyChartData(data.charts.monthlyChartData || []);
+             setInventoryChartData(data.charts.inventoryChartData || []);
+             setCustomerChartData(data.charts.customerChartData || []);
+             setRevenueSourcesData(data.charts.revenueSourcesData || []);
+             setTopProductsData(data.charts.topProductsData || []);
+          }
+          if (data.ai_output) {
+             setAiContext(data.ai_output.aiContext || null);
+          }
+        } else {
+          console.log("[Cache] No cache found for", periodId, "- Needs Analysis");
+          // Reset view so it doesn't show previous period's data
+          setAiContext(null);
+          setTotalRevenue(0);
+          setHealthScore(0);
+        }
+      } catch (err) {
+        console.error("Failed to load cached analysis", err);
+      }
+    };
+    
+    loadCachedAnalysis();
+  }, [selectedMonth, selectedYear, analysisMode, isLoaded]);
 
-    setTimeout(() => {
-      setAnalysisProgress({ isAnalyzing: true, stage: 'charts', progressPercent: 60 });
-    }, 3000);
+  const runAnalysisPipeline = (currentDocs: UploadedDocument[]) => {
+    // 1. Determine period docs
+    const currentDocsForPeriod = currentDocs.filter(d => {
+      if (d.status !== 'analyzed') return false;
+      if (analysisMode === 'Monthly') return d.month === selectedMonth && d.year === selectedYear;
+      return d.year === selectedYear;
+    });
 
-    setTimeout(() => {
-      setAnalysisProgress({ isAnalyzing: true, stage: 'insights', progressPercent: 80 });
-    }, 4500);
+    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    let pMonth = selectedMonth;
+    let pYear = selectedYear;
+    if (analysisMode === 'Monthly') {
+      const currentIdx = MONTHS.indexOf(selectedMonth);
+      if (currentIdx === 0) {
+        pMonth = 'December';
+        pYear = selectedYear - 1;
+      } else {
+        pMonth = MONTHS[currentIdx - 1];
+      }
+    } else {
+      pYear = selectedYear - 1;
+    }
 
-    setTimeout(() => {
-      setAnalysisProgress({ isAnalyzing: true, stage: 'summary', progressPercent: 95 });
-    }, 6000);
+    const prevDocsForPeriod = currentDocs.filter(d => {
+      if (d.status !== 'analyzed') return false;
+      if (analysisMode === 'Monthly') return d.month === pMonth && d.year === pYear;
+      return d.year === pYear;
+    });
 
-    setTimeout(() => {
-      setAnalysisProgress({ isAnalyzing: false, stage: 'complete', progressPercent: 100 });
-    }, 8500); // Gives time for summary to stream
+    // 2. Generate Intelligence Context
+    const newAiContext = generateIntelligenceContext(currentDocsForPeriod, prevDocsForPeriod, selectedMonth, selectedYear);
+    
+    // 3. Generate Charts
+    const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyFinancials: MonthlyFinancialData[] = [];
+    const customerAcq: CustomerData[] = [];
+    
+    for (let i = 0; i < 12; i++) {
+      const monthShort = MONTHS_SHORT[i];
+      const monthFull = MONTHS[i];
+      const docsForThisMonth = currentDocs.filter(d => d.status === 'analyzed' && d.month === monthFull && d.year === selectedYear);
+      
+      if (docsForThisMonth.length > 0) {
+        const prevMonthFull = i === 0 ? 'December' : MONTHS[i-1];
+        const prevYr = i === 0 ? selectedYear - 1 : selectedYear;
+        const docsForPrev = currentDocs.filter(d => d.status === 'analyzed' && d.month === prevMonthFull && d.year === prevYr);
+        
+        const ctx = generateIntelligenceContext(docsForThisMonth, docsForPrev, monthFull, selectedYear);
+        if (ctx) {
+          monthlyFinancials.push({ month: monthShort, revenue: ctx.revenue, expenses: ctx.expenses, profit: ctx.revenue - ctx.expenses, salesGrowth: ctx.revenueGrowth, cashFlow: ctx.cashFlow, actual: true });
+          customerAcq.push({ month: monthShort, new: Math.round(ctx.averageRating * 20), returning: Math.round(ctx.averageRating * 80) });
+        }
+      } else {
+        monthlyFinancials.push({ month: monthShort, revenue: null, expenses: null, profit: null, salesGrowth: null, cashFlow: null, actual: false });
+        customerAcq.push({ month: monthShort, new: null, returning: null });
+      }
+    }
+
+    let inv: InventoryData[] = [];
+    let revSrc: RevenueSourceData[] = [];
+    let topProd: TopProductData[] = newAiContext?.topProducts || [];
+
+    if (newAiContext && newAiContext.revenue > 0) {
+      const isHealthy = newAiContext.inventoryStatus === 'Healthy';
+      inv = [
+        { name: 'In Stock', value: isHealthy ? 70 : 40, color: '#10b981' },
+        { name: 'Low Stock', value: isHealthy ? 20 : 35, color: '#f59e0b' },
+        { name: 'Out of Stock', value: isHealthy ? 10 : 25, color: '#ef4444' }
+      ];
+      if (newAiContext.revenueSources && newAiContext.revenueSources.length > 0) {
+        revSrc = newAiContext.revenueSources;
+      } else {
+        revSrc = []; // Ensure no hallucinated demo data is shown
+      }
+    }
+
+    setAiContext(newAiContext);
+    setMonthlyChartData(monthlyFinancials);
+    setCustomerChartData(customerAcq);
+    setInventoryChartData(inv);
+    setRevenueSourcesData(revSrc);
+    setTopProductsData(topProd);
+
+    // Sync scalar metrics
+    if (newAiContext) {
+      setTotalRevenue(newAiContext.revenue);
+      setMonthlyExpenses(newAiContext.expenses);
+      setActiveCustomers(newAiContext.averageRating * 100);
+      setCashFlow(newAiContext.cashFlow);
+      setHealthScore(newAiContext.healthScore);
+      setFinancialScore(newAiContext.financialScore);
+      setInventoryScore(newAiContext.inventoryScore);
+      setCustomerScore(newAiContext.customerScore);
+      setGrowthScore(newAiContext.growthScore);
+      setOperationalScore(newAiContext.operationsScore);
+      setConfidenceScore(Math.min(99, 40 + (currentDocsForPeriod.length * 15)));
+      setBusinessGrade(newAiContext.grade);
+    } else {
+      setTotalRevenue(0);
+      setMonthlyExpenses(0);
+      setActiveCustomers(0);
+      setCashFlow(0);
+      setHealthScore(0);
+      setFinancialScore(0);
+      setInventoryScore(0);
+      setCustomerScore(0);
+      setGrowthScore(0);
+      setOperationalScore(0);
+      setConfidenceScore(0);
+      setBusinessGrade('Critical');
+    }
+
+    const prevAiContext = generateIntelligenceContext(prevDocsForPeriod, [], pMonth, pYear);
+    if (prevAiContext) {
+      setPrevTotalRevenue(prevAiContext.revenue);
+      setPrevMonthlyExpenses(prevAiContext.expenses);
+      setPrevActiveCustomers(prevAiContext.averageRating * 100);
+      setPrevCashFlow(prevAiContext.cashFlow);
+      setPrevHealthScore(prevAiContext.healthScore);
+      setPrevFinancialScore(prevAiContext.financialScore);
+      setPrevInventoryScore(prevAiContext.inventoryScore);
+      setPrevCustomerScore(prevAiContext.customerScore);
+      setPrevGrowthScore(prevAiContext.growthScore);
+      setPrevOperationalScore(prevAiContext.operationsScore);
+    } else {
+      setPrevTotalRevenue(0);
+      setPrevMonthlyExpenses(0);
+      setPrevActiveCustomers(0);
+      setPrevCashFlow(0);
+      setPrevHealthScore(0);
+      setPrevFinancialScore(0);
+      setPrevInventoryScore(0);
+      setPrevCustomerScore(0);
+      setPrevGrowthScore(0);
+      setPrevOperationalScore(0);
+    }
+
+    // --- NEW: Persist to ai_analysis_cache ---
+    const persistToCache = async () => {
+      const periodId = analysisMode === 'Monthly' ? `Monthly-${selectedMonth}-${selectedYear}` : `Annual-${selectedYear}`;
+      const docHashes = currentDocsForPeriod.map(d => d.hash).filter(Boolean);
+      
+      const payload = {
+        id: periodId,
+        business_id: 'default',
+        document_hashes: docHashes,
+        metrics: {
+          healthScore: newAiContext?.healthScore || 0,
+          totalRevenue: newAiContext?.revenue || 0,
+          activeCustomers: newAiContext ? (newAiContext.averageRating * 100) : 0,
+          monthlyExpenses: newAiContext?.expenses || 0,
+          cashFlow: newAiContext?.cashFlow || 0,
+          financialScore: newAiContext?.financialScore || 0,
+          inventoryScore: newAiContext?.inventoryScore || 0,
+          customerScore: newAiContext?.customerScore || 0,
+          growthScore: newAiContext?.growthScore || 0,
+          operationalScore: newAiContext?.operationsScore || 0,
+          confidenceScore: Math.min(99, 40 + (currentDocsForPeriod.length * 15)),
+          businessGrade: newAiContext?.grade || 'Critical'
+        },
+        charts: {
+          monthlyChartData: monthlyFinancials,
+          inventoryChartData: inv,
+          customerChartData: customerAcq,
+          revenueSourcesData: revSrc,
+          topProductsData: topProd
+        },
+        ai_output: {
+          aiContext: newAiContext
+        },
+        status: 'completed',
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase.from('ai_analysis_cache').upsert(payload, { onConflict: 'id' });
+      if (error) console.error("Failed to cache analysis:", error);
+      else console.log("[Cache] Saved generated analysis to Supabase");
+    };
+    
+    persistToCache();
+  };
+
+  const beginAnalysis = async (newDoc?: UploadedDocument) => {
+    // Generate right now using the known context
+    let updatedDocs = [...documents];
+    if (newDoc && !documents.find(d => d.id === newDoc.id)) {
+      updatedDocs = [newDoc, ...documents];
+    }
+    
+    // Auto-mark new doc as analyzed if not already
+    if (newDoc) {
+      updatedDocs = updatedDocs.map(d => d.id === newDoc.id ? { ...d, status: 'analyzed' } : d);
+    }
+
+    // Hash check to prevent unnecessary re-analysis
+    const currentDocsForPeriod = updatedDocs.filter(d => {
+      if (analysisMode === 'Monthly') return d.month === selectedMonth && d.year === selectedYear;
+      return d.year === selectedYear;
+    });
+    
+    const newHashes = currentDocsForPeriod.map(d => d.hash).filter(Boolean) as string[];
+    const periodId = analysisMode === 'Monthly' ? `Monthly-${selectedMonth}-${selectedYear}` : `Annual-${selectedYear}`;
+    
+    try {
+      const { data } = await supabase.from('ai_analysis_cache').select('document_hashes').eq('id', periodId).single();
+      if (data && data.document_hashes) {
+        const existingHashes = data.document_hashes as string[];
+        const isSubset = newHashes.every(h => existingHashes.includes(h));
+        if (isSubset && newHashes.length === existingHashes.length && newHashes.length > 0) {
+          console.log("[Cache] Documents match exactly, skipping AI re-analysis.");
+          // Update UI to just instantly complete if we called this manually
+          setAnalysisProgress({ isAnalyzing: false, stage: 'complete', progressPercent: 100 });
+          return;
+        }
+      }
+    } catch (e) {
+      // Ignored
+    }
+    
+    runAnalysisPipeline(updatedDocs);
+
+    // Run UI progressive loading state
+    setAnalysisProgress({ isAnalyzing: true, stage: 'reading', progressPercent: 10 });
+    setTimeout(() => setAnalysisProgress({ isAnalyzing: true, stage: 'kpis', progressPercent: 30 }), 1500);
+    setTimeout(() => setAnalysisProgress({ isAnalyzing: true, stage: 'charts', progressPercent: 60 }), 3000);
+    setTimeout(() => setAnalysisProgress({ isAnalyzing: true, stage: 'insights', progressPercent: 80 }), 4500);
+    setTimeout(() => setAnalysisProgress({ isAnalyzing: true, stage: 'summary', progressPercent: 95 }), 6000);
+    setTimeout(() => setAnalysisProgress({ isAnalyzing: false, stage: 'complete', progressPercent: 100 }), 8500);
   };
 
   const [prevHealthScore, setPrevHealthScore] = useState(defaultState.prevHealthScore);
@@ -301,8 +585,8 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
   useEffect(() => {
     if (!isLoaded) return; // Don't overwrite database with initial state
 
+    // Save to Supabase (attempt to save full analysis JSON as well if table supports it, else we rely on local storage for now until schema is fully migrated)
     const saveToSupabase = async () => {
-      // Save metrics
       const { error } = await supabase.from('business_metrics').upsert({
         id: 'default',
         health_score: healthScore,
@@ -318,16 +602,35 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
         confidence_score: confidenceScore
       }, { onConflict: 'id' });
       if (error) console.error(error);
+      
+      // We also attempt to save the deep analysis state to a new table `business_analysis`
+      try {
+        await supabase.from('business_analysis').upsert({
+          id: 'default',
+          ai_context: aiContext,
+          monthly_chart: monthlyChartData,
+          inventory_chart: inventoryChartData,
+          customer_chart: customerChartData,
+          revenue_chart: revenueSourcesData,
+          top_products: topProductsData
+        }, { onConflict: 'id' });
+      } catch (e) {
+        // catch error silently if table doesn't exist yet
+      }
     };
 
     saveToSupabase();
 
-    // Still save to local storage as backup
     localStorage.setItem('takeover_business_data', JSON.stringify({
       healthScore, totalRevenue, activeCustomers, monthlyExpenses, cashFlow, documents,
-      analysisMode, selectedMonth, selectedYear
+      analysisMode, selectedMonth, selectedYear,
+      aiContext, monthlyChartData, inventoryChartData, customerChartData, revenueSourcesData, topProductsData
     }));
-  }, [healthScore, totalRevenue, activeCustomers, monthlyExpenses, cashFlow, documents, analysisMode, selectedMonth, selectedYear, isLoaded]);
+  }, [
+    healthScore, totalRevenue, activeCustomers, monthlyExpenses, cashFlow, documents, 
+    analysisMode, selectedMonth, selectedYear, isLoaded, 
+    aiContext, monthlyChartData, inventoryChartData, customerChartData, revenueSourcesData, topProductsData
+  ]);
 
   const addDocument = async (doc: UploadedDocument) => {
     // We now append to the existing documents to keep a permanent history
@@ -349,7 +652,10 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
   };
 
   const updateDocumentStatus = async (id: string, status: 'parsing' | 'analyzed') => {
-    setDocuments(prev => prev.map(doc => doc.id === id ? { ...doc, status } : doc));
+    setDocuments(prev => {
+      const newDocs = prev.map(doc => doc.id === id ? { ...doc, status } : doc);
+      return newDocs;
+    });
     const { error } = await supabase.from('documents').update({ status }).eq('id', id);
     if (error) console.error(error);
   };
@@ -358,187 +664,11 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
     // We no longer take a fileName parameter. Instead, we recalculate everything based on the current analyzed documents.
   };
 
-  const docsForPeriod = useMemo(() => {
-    return documents.filter(d => {
-      if (d.status !== 'analyzed') return false;
-      if (analysisMode === 'Monthly') return d.month === selectedMonth && d.year === selectedYear;
-      return d.year === selectedYear;
-    });
-  }, [documents, analysisMode, selectedMonth, selectedYear]);
-
-  const { prevMonth, prevYear } = useMemo(() => {
-    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    let pMonth = selectedMonth;
-    let pYear = selectedYear;
-    if (analysisMode === 'Monthly') {
-      const currentIdx = MONTHS.indexOf(selectedMonth);
-      if (currentIdx === 0) {
-        pMonth = 'December';
-        pYear = selectedYear - 1;
-      } else {
-        pMonth = MONTHS[currentIdx - 1];
-      }
-    } else {
-      pYear = selectedYear - 1;
-    }
-    return { prevMonth: pMonth, prevYear: pYear };
-  }, [analysisMode, selectedMonth, selectedYear]);
-
-  const prevDocsForPeriod = useMemo(() => {
-    return documents.filter(d => {
-      if (d.status !== 'analyzed') return false;
-      if (analysisMode === 'Monthly') return d.month === prevMonth && d.year === prevYear;
-      return d.year === prevYear;
-    });
-  }, [documents, analysisMode, prevMonth, prevYear]);
-
-  const aiContext = useMemo(() => {
-    if (!isLoaded) return null;
-    return generateIntelligenceContext(docsForPeriod, prevDocsForPeriod, selectedMonth, selectedYear);
-  }, [docsForPeriod, prevDocsForPeriod, selectedMonth, selectedYear, isLoaded]);
-
-  const prevContext = useMemo(() => {
-    if (!isLoaded) return null;
-    return generateIntelligenceContext(prevDocsForPeriod, [], prevMonth, prevYear);
-  }, [prevDocsForPeriod, prevMonth, prevYear, isLoaded]);
-
-  // Generate strict deterministic chart data from uploaded documents ONLY
-  const chartData = useMemo(() => {
-    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    
-    const monthlyFinancials: MonthlyFinancialData[] = [];
-    const customerAcq: CustomerData[] = [];
-    
-    for (let i = 0; i < 12; i++) {
-      const monthShort = MONTHS[i];
-      const monthFull = FULL_MONTHS[i];
-      const docsForThisMonth = documents.filter(d => d.status === 'analyzed' && d.month === monthFull && d.year === selectedYear);
-      
-      if (docsForThisMonth.length > 0) {
-        // We have real data for this month
-        const prevMonthFull = i === 0 ? 'December' : FULL_MONTHS[i-1];
-        const pYear = i === 0 ? selectedYear - 1 : selectedYear;
-        const docsForPrev = documents.filter(d => d.status === 'analyzed' && d.month === prevMonthFull && d.year === pYear);
-        
-        const ctx = generateIntelligenceContext(docsForThisMonth, docsForPrev, monthFull, selectedYear);
-        if (ctx) {
-          monthlyFinancials.push({
-            month: monthShort,
-            revenue: ctx.revenue,
-            expenses: ctx.expenses,
-            profit: ctx.revenue - ctx.expenses,
-            salesGrowth: ctx.revenueGrowth,
-            cashFlow: ctx.cashFlow,
-            actual: true
-          });
-          customerAcq.push({
-            month: monthShort,
-            new: Math.round(ctx.averageRating * 20),
-            returning: Math.round(ctx.averageRating * 80)
-          });
-        }
-      } else {
-        // No data, push explicit nulls so chart breaks gracefully
-        monthlyFinancials.push({
-          month: monthShort, revenue: null, expenses: null, profit: null, salesGrowth: null, cashFlow: null, actual: false
-        });
-        customerAcq.push({
-          month: monthShort, new: null, returning: null
-        });
-      }
-    }
-
-    // Pie chart distributions scale logically based on the current aiContext (selected month)
-    let inv: InventoryData[] = [];
-    let revSrc: RevenueSourceData[] = [];
-    let topProd: TopProductData[] = [];
-
-    if (aiContext && aiContext.revenue > 0) {
-      const isHealthy = aiContext.inventoryStatus === 'Healthy';
-      inv = [
-        { name: 'In Stock', value: isHealthy ? 70 : 40, color: '#10b981' },
-        { name: 'Low Stock', value: isHealthy ? 20 : 35, color: '#f59e0b' },
-        { name: 'Out of Stock', value: isHealthy ? 10 : 25, color: '#ef4444' }
-      ];
-      
-      revSrc = [
-        { name: 'Retail', value: Math.round(aiContext.revenue * 0.45), color: '#3b82f6' },
-        { name: 'Wholesale', value: Math.round(aiContext.revenue * 0.25), color: '#8b5cf6' },
-        { name: 'Online', value: Math.round(aiContext.revenue * 0.20), color: '#ec4899' },
-        { name: 'Subscription', value: Math.round(aiContext.revenue * 0.10), color: '#10b981' },
-      ];
-
-      topProd = [
-        { name: 'Core Product A', sales: Math.round(aiContext.revenue * 0.3) },
-        { name: 'Core Product B', sales: Math.round(aiContext.revenue * 0.2) },
-        { name: 'Accessory X', sales: Math.round(aiContext.revenue * 0.15) },
-        { name: 'Service Y', sales: Math.round(aiContext.revenue * 0.1) },
-        { name: 'Add-on Z', sales: Math.round(aiContext.revenue * 0.08) },
-      ];
-    }
-
-    return { monthlyFinancials, customerAcq, inv, revSrc, topProd };
-  }, [documents, selectedYear, aiContext]);
-
-  // Synchronize state with derived context when it changes
-  useEffect(() => {
-    if (!isLoaded) return;
-    
-    if (aiContext) {
-      setTotalRevenue(aiContext.revenue);
-      setMonthlyExpenses(aiContext.expenses);
-      setActiveCustomers(aiContext.averageRating * 100);
-      setCashFlow(aiContext.cashFlow);
-      setHealthScore(aiContext.healthScore);
-      setFinancialScore(aiContext.financialScore);
-      setInventoryScore(aiContext.inventoryScore);
-      setCustomerScore(aiContext.customerScore);
-      setGrowthScore(aiContext.growthScore);
-      setOperationalScore(aiContext.operationsScore);
-      setConfidenceScore(Math.min(99, 40 + (docsForPeriod.length * 15)));
-      setBusinessGrade(aiContext.grade);
-    } else {
-      setTotalRevenue(0);
-      setMonthlyExpenses(0);
-      setActiveCustomers(0);
-      setCashFlow(0);
-      setHealthScore(0);
-      setFinancialScore(0);
-      setInventoryScore(0);
-      setCustomerScore(0);
-      setGrowthScore(0);
-      setOperationalScore(0);
-      setConfidenceScore(0);
-      setBusinessGrade('Critical');
-    }
-
-    if (prevContext) {
-      setPrevTotalRevenue(prevContext.revenue);
-      setPrevMonthlyExpenses(prevContext.expenses);
-      setPrevActiveCustomers(prevContext.averageRating * 100);
-      setPrevCashFlow(prevContext.cashFlow);
-      setPrevHealthScore(prevContext.healthScore);
-      setPrevFinancialScore(prevContext.financialScore);
-      setPrevInventoryScore(prevContext.inventoryScore);
-      setPrevCustomerScore(prevContext.customerScore);
-      setPrevGrowthScore(prevContext.growthScore);
-      setPrevOperationalScore(prevContext.operationsScore);
-    } else {
-      setPrevTotalRevenue(0);
-      setPrevMonthlyExpenses(0);
-      setPrevActiveCustomers(0);
-      setPrevCashFlow(0);
-      setPrevHealthScore(0);
-      setPrevFinancialScore(0);
-      setPrevInventoryScore(0);
-      setPrevCustomerScore(0);
-      setPrevGrowthScore(0);
-      setPrevOperationalScore(0);
-    }
-  }, [aiContext, prevContext, isLoaded, docsForPeriod.length]);
   const removeDocument = async (id: string) => {
-    setDocuments(prev => prev.filter(doc => doc.id !== id));
+    setDocuments(prev => {
+      const newDocs = prev.filter(doc => doc.id !== id);
+      return newDocs;
+    });
     // Delete from Supabase
     const { error } = await supabase.from('documents').delete().eq('id', id);
     if (error) console.error(error);
@@ -593,11 +723,11 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       selectedMonth,
       selectedYear,
       aiContext,
-      monthlyChartData: chartData.monthlyFinancials,
-      inventoryChartData: chartData.inv,
-      customerChartData: chartData.customerAcq,
-      revenueSourcesData: chartData.revSrc,
-      topProductsData: chartData.topProd,
+      monthlyChartData,
+      inventoryChartData,
+      customerChartData,
+      revenueSourcesData,
+      topProductsData,
       isLoaded,
       setAnalysisMode,
       setSelectedMonth,
@@ -608,6 +738,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       removeDocument,
       generateSnapshot,
       analysisProgress,
+      setAnalysisProgress,
       beginAnalysis
     }}>
       {children}

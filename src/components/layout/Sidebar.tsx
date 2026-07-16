@@ -27,7 +27,7 @@ interface SidebarProps {
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Executive Briefing' },
-  { icon: BrainCircuit, label: 'AI CEO Mode' },
+  { icon: BrainCircuit, label: 'PulseAI' },
   { icon: Activity, label: 'Digital Twin' },
   { icon: Dna, label: 'Business DNA' },
   { icon: TrendingUp, label: 'What-If Simulator' },
@@ -42,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage,
       <div className={styles.header}>
         <div className={styles.logo}>
           <BrainCircuit className={styles.logoIcon} />
-          {isOpen && <span className={styles.logoText}>AI<span className={styles.logoHighlight}>CEO</span></span>}
+          {isOpen && <span className={styles.logoText}>Pulse<span className={styles.logoHighlight}>AI</span></span>}
         </div>
         <button 
           className={styles.toggleBtn}

@@ -42,9 +42,9 @@ export const TopProductsChart: React.FC = () => {
             <Tooltip 
               contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
               cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-              formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Sales']}
+              formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Revenue']}
             />
-            <Bar dataKey="sales" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={16} />
+            <Bar dataKey="revenue" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={16} />
           </BarChart>
         </ResponsiveContainer>
       )}

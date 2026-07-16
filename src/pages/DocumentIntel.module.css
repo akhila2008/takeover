@@ -241,3 +241,114 @@
   padding: 32px 0;
   font-size: 14px;
 }
+
+/* Progression UI */
+.progressionUI {
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.progressionHeader {
+  margin-bottom: 32px;
+}
+
+.successBanner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.successBanner h2 {
+  color: #10b981;
+  font-size: 20px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.successIcon {
+  color: #10b981;
+}
+
+.processingBanner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.processingBanner h2 {
+  color: #fff;
+  font-size: 20px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.spinnerLarge {
+  color: #6366f1;
+  animation: spin 1.5s linear infinite;
+}
+
+.progressChecklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.progressChecklist li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.progressItemCompleted {
+  color: #10b981;
+}
+
+.progressItemCompleted span {
+  color: #fff;
+}
+
+.progressItemActive {
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.progressItemActive span {
+  color: #fff;
+  font-weight: 500;
+}
+
+.progressItemPending {
+  color: #475569;
+}
+
+.progressItemPending span {
+  color: #94a3b8;
+}
+
+.pendingCircle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #334155;
+}
