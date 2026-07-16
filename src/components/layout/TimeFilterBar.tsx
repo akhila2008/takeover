@@ -5,7 +5,10 @@ import { Dropdown } from '../ui/Dropdown';
 import styles from './TimeFilterBar.module.css';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const YEARS = Array.from({ length: 31 }, (_, i) => 2020 + i); // 2020 to 2050
+const nowIST = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+const currentYear = nowIST.getFullYear();
+const currentMonthIndex = nowIST.getMonth();
+const YEARS = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => 1950 + i);
 
 interface Props {
   onNavigate?: (page: string) => void;
@@ -27,7 +30,14 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
   const handleNextMonth = () => {
     const currentIndex = MONTHS.indexOf(selectedMonth);
     
+    // Prevent going into the future if we're in the current year
+    if (selectedYear === currentYear && currentIndex >= currentMonthIndex) {
+      return;
+    }
+
     if (currentIndex === 11) {
+      // Prevent going into a future year
+      if (selectedYear >= currentYear) return;
       setSelectedMonth('January');
       setSelectedYear(selectedYear + 1);
     } else {
@@ -64,7 +74,10 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
               <Dropdown 
                 value={selectedMonth} 
                 onChange={val => setSelectedMonth(val as string)}
-                options={MONTHS.map((m) => ({ value: m, label: m }))}
+                options={MONTHS.map((m, index) => {
+                  const isFutureMonth = selectedYear === currentYear && index > currentMonthIndex;
+                  return isFutureMonth ? null : { value: m, label: m };
+                }).filter(Boolean) as { value: string, label: string }[]}
               />
               <Dropdown 
                 value={selectedYear} 
@@ -89,8 +102,13 @@ export const TimeFilterBar: React.FC<Props> = ({ onNavigate }) => {
           onClick={
             analysisMode === 'Monthly' 
               ? handleNextMonth 
-              : () => setSelectedYear(selectedYear + 1)
+              : () => {
+                  if (selectedYear < currentYear) {
+                    setSelectedYear(selectedYear + 1);
+                  }
+                }
           }
+          style={{ opacity: (analysisMode === 'Monthly' && selectedYear === currentYear && MONTHS.indexOf(selectedMonth) >= currentMonthIndex) || (analysisMode === 'Annual' && selectedYear >= currentYear) ? 0.3 : 1, cursor: (analysisMode === 'Monthly' && selectedYear === currentYear && MONTHS.indexOf(selectedMonth) >= currentMonthIndex) || (analysisMode === 'Annual' && selectedYear >= currentYear) ? 'not-allowed' : 'pointer' }}
         >
           <ChevronRight size={18} />
         </button>
