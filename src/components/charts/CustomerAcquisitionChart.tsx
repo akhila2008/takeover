@@ -1,9 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { customerAcquisition } from '../../lib/dummyChartData';
+import { useBusinessData } from '../../context/BusinessDataContext';
 
 export const CustomerAcquisitionChart: React.FC = () => {
+  const { customerChartData } = useBusinessData();
+  const hasData = customerChartData.some(d => Object.values(d).some(val => typeof val === 'number'));
   return (
     <motion.div 
       className="glass-panel"
@@ -17,8 +19,15 @@ export const CustomerAcquisitionChart: React.FC = () => {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>New vs Returning customer ratio</p>
       </div>
       <div style={{ flex: 1, minHeight: '250px' }}>
+        
+      {!hasData ? (
+        <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No data available for this period. Upload reports to view trends.</p>
+        </div>
+      ) : (
+    
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={customerAcquisition} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+          <BarChart data={customerChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
             <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
             <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
@@ -31,6 +40,7 @@ export const CustomerAcquisitionChart: React.FC = () => {
             <Bar dataKey="returning" name="Returning" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
+      )}
       </div>
     </motion.div>
   );

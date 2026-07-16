@@ -1,9 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { monthlyFinancials } from '../../lib/dummyChartData';
+import { useBusinessData } from '../../context/BusinessDataContext';
 
 export const SalesGrowthChart: React.FC = () => {
+  const { monthlyChartData } = useBusinessData();
+  const hasData = monthlyChartData.some(d => Object.values(d).some(val => typeof val === 'number'));
   return (
     <motion.div 
       className="glass-panel"
@@ -17,8 +19,15 @@ export const SalesGrowthChart: React.FC = () => {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Month over month sales growth percentage</p>
       </div>
       <div style={{ flex: 1, minHeight: '250px' }}>
+        
+      {!hasData ? (
+        <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No data available for this period. Upload reports to view trends.</p>
+        </div>
+      ) : (
+    
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={monthlyFinancials} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <AreaChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="colorGrowth" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8}/>
@@ -38,7 +47,7 @@ export const SalesGrowthChart: React.FC = () => {
               contentStyle={{ backgroundColor: 'rgba(17, 24, 39, 0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
               formatter={(value: any) => [`${value}%`, 'Growth Rate']}
             />
-            <Area 
+            <Area connectNulls={false} 
               type="monotone" 
               dataKey="salesGrowth" 
               stroke="#a855f7" 
@@ -48,6 +57,7 @@ export const SalesGrowthChart: React.FC = () => {
             />
           </AreaChart>
         </ResponsiveContainer>
+      )}
       </div>
     </motion.div>
   );

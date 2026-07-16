@@ -1,9 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
-import { inventoryStatus } from '../../lib/dummyChartData';
+import { useBusinessData } from '../../context/BusinessDataContext';
 
 export const InventoryStatusChart: React.FC = () => {
+  const { inventoryChartData } = useBusinessData();
+  const hasData = inventoryChartData && inventoryChartData.length > 0;
   return (
     <motion.div 
       className="glass-panel"
@@ -17,10 +19,17 @@ export const InventoryStatusChart: React.FC = () => {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Current SKU availability breakdown</p>
       </div>
       <div style={{ flex: 1, minHeight: '250px' }}>
+        
+      {!hasData ? (
+        <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No data available for this period. Upload reports to view trends.</p>
+        </div>
+      ) : (
+    
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={inventoryStatus}
+              data={inventoryChartData}
               cx="50%"
               cy="50%"
               innerRadius={60}
@@ -29,7 +38,7 @@ export const InventoryStatusChart: React.FC = () => {
               dataKey="value"
               stroke="none"
             >
-              {inventoryStatus.map((entry, index) => (
+              {inventoryChartData.map((entry: any, index: any) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
@@ -40,6 +49,7 @@ export const InventoryStatusChart: React.FC = () => {
             <Legend verticalAlign="bottom" height={36} iconType="circle" />
           </PieChart>
         </ResponsiveContainer>
+      )}
       </div>
     </motion.div>
   );

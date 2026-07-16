@@ -1,9 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { topProducts } from '../../lib/dummyChartData';
+import { useBusinessData } from '../../context/BusinessDataContext';
 
 export const TopProductsChart: React.FC = () => {
+  const { topProductsData } = useBusinessData();
+  const hasData = topProductsData && topProductsData.length > 0;
   return (
     <motion.div 
       className="glass-panel"
@@ -17,8 +19,15 @@ export const TopProductsChart: React.FC = () => {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Highest grossing items (Top 10)</p>
       </div>
       <div style={{ flex: 1, minHeight: '350px' }}>
+        
+      {!hasData ? (
+        <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No data available for this period. Upload reports to view trends.</p>
+        </div>
+      ) : (
+    
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={topProducts} layout="vertical" margin={{ top: 10, right: 10, left: 40, bottom: 0 }}>
+          <BarChart data={topProductsData} layout="vertical" margin={{ top: 10, right: 10, left: 40, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" horizontal={false} />
             <XAxis type="number" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value/1000}k`} />
             <YAxis 
@@ -38,6 +47,7 @@ export const TopProductsChart: React.FC = () => {
             <Bar dataKey="sales" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={16} />
           </BarChart>
         </ResponsiveContainer>
+      )}
       </div>
     </motion.div>
   );

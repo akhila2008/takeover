@@ -1,9 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { monthlyFinancials } from '../../lib/dummyChartData';
+import { useBusinessData } from '../../context/BusinessDataContext';
 
 export const ProfitExpenseChart: React.FC = () => {
+  const { monthlyChartData } = useBusinessData();
+  const hasData = monthlyChartData.some(d => Object.values(d).some(val => typeof val === 'number'));
   return (
     <motion.div 
       className="glass-panel"
@@ -17,8 +19,15 @@ export const ProfitExpenseChart: React.FC = () => {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Comparative monthly financial breakdown</p>
       </div>
       <div style={{ flex: 1, minHeight: '250px' }}>
+        
+      {!hasData ? (
+        <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No data available for this period. Upload reports to view trends.</p>
+        </div>
+      ) : (
+    
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={monthlyFinancials} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <BarChart data={monthlyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
             <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
             <YAxis 
@@ -37,6 +46,7 @@ export const ProfitExpenseChart: React.FC = () => {
             <Bar dataKey="expenses" name="Expenses" fill="var(--accent-warning)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
+      )}
       </div>
     </motion.div>
   );

@@ -1,9 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { monthlyFinancials } from '../../lib/dummyChartData';
+import { useBusinessData } from '../../context/BusinessDataContext';
 
 export const ForecastChart: React.FC = () => {
+  const { monthlyChartData } = useBusinessData();
+  const hasData = monthlyChartData.some(d => Object.values(d).some(val => typeof val === 'number'));
   return (
     <motion.div 
       className="glass-panel"
@@ -13,12 +15,19 @@ export const ForecastChart: React.FC = () => {
       style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
     >
       <div style={{ marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '1.2rem', margin: 0 }}>AI Forecast</h3>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Actual vs Predicted Revenue</p>
+        <h3 style={{ fontSize: '1.2rem', margin: 0 }}>AI Revenue Forecast</h3>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Predictive modeling based on historical data</p>
       </div>
       <div style={{ flex: 1, minHeight: '250px' }}>
+        
+      {!hasData ? (
+        <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No data available for this period. Upload reports to view trends.</p>
+        </div>
+      ) : (
+    
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={monthlyFinancials} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <ComposedChart data={monthlyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorForecast" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.2}/>
@@ -40,17 +49,16 @@ export const ForecastChart: React.FC = () => {
             />
             <Legend wrapperStyle={{ paddingTop: '10px' }} />
             
-            <Area type="monotone" dataKey="predicted" fill="url(#colorForecast)" stroke="none" />
-            <Line 
+            <Area connectNulls={false} type="monotone" dataKey="predicted" fill="url(#colorForecast)" stroke="none" />
+            <Line connectNulls={false}
               type="monotone" 
               dataKey="revenue" 
               name="Actual Revenue" 
               stroke="var(--accent-info)" 
               strokeWidth={3} 
               dot={{ r: 4 }} 
-              connectNulls
             />
-            <Line 
+            <Line connectNulls={false}
               type="monotone" 
               dataKey="predicted" 
               name="Predicted Revenue" 
@@ -58,10 +66,10 @@ export const ForecastChart: React.FC = () => {
               strokeWidth={2} 
               strokeDasharray="5 5" 
               dot={false}
-              connectNulls
             />
           </ComposedChart>
         </ResponsiveContainer>
+      )}
       </div>
     </motion.div>
   );

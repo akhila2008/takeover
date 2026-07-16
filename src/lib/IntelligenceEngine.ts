@@ -90,9 +90,8 @@ export const generateIntelligenceContext = (
      }
   });
 
-  if (revenue === 0 && documents.length > 0) revenue = 150000; // Fallback
-  if (expenses === 0 && documents.length > 0) expenses = 40000; // Fallback
-  if (prevRevenue === 0 && previousDocuments.length > 0) prevRevenue = 120000; // Fallback
+  // Removed hardcoded fallbacks to ensure strict data integrity
+
 
   const profitMargin = revenue > 0 ? Math.round(((revenue - expenses) / revenue) * 100) : 0;
   const cashFlow = revenue - expenses;

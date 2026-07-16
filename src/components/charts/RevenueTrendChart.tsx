@@ -1,9 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { monthlyFinancials } from '../../lib/dummyChartData';
+import { useBusinessData } from '../../context/BusinessDataContext';
 
 export const RevenueTrendChart: React.FC = () => {
+  const { monthlyChartData } = useBusinessData();
+  const hasData = monthlyChartData.some(d => Object.values(d).some(val => typeof val === 'number'));
   return (
     <motion.div 
       className="glass-panel"
@@ -17,8 +19,15 @@ export const RevenueTrendChart: React.FC = () => {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Monthly total revenue trajectory</p>
       </div>
       <div style={{ flex: 1, minHeight: '250px' }}>
+        
+      {!hasData ? (
+        <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No data available for this period. Upload reports to view trends.</p>
+        </div>
+      ) : (
+    
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={monthlyFinancials} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart data={monthlyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--accent-info)" stopOpacity={0.8}/>
@@ -39,7 +48,7 @@ export const RevenueTrendChart: React.FC = () => {
               itemStyle={{ color: '#fff' }}
               formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Revenue']}
             />
-            <Area 
+            <Area connectNulls={false} 
               type="monotone" 
               dataKey="revenue" 
               stroke="var(--accent-info)" 
@@ -50,6 +59,7 @@ export const RevenueTrendChart: React.FC = () => {
             />
           </AreaChart>
         </ResponsiveContainer>
+      )}
       </div>
     </motion.div>
   );
