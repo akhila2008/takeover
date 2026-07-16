@@ -3,7 +3,6 @@ import { MainLayout } from './components/layout/MainLayout';
 import { ExecutiveBriefing } from './pages/ExecutiveBriefing';
 import { DigitalTwin } from './pages/DigitalTwin';
 import { WhatIfSimulator } from './pages/WhatIfSimulator';
-import { RiskRadar } from './pages/RiskRadar';
 import { AiCeoMode } from './pages/AiCeoMode';
 import { ComingSoon } from './components/ComingSoon';
 import { Toast } from './components/ui/Toast';
@@ -80,8 +79,6 @@ function App() {
         return <DigitalTwin />;
       case 'what-if-simulator':
         return <WhatIfSimulator />;
-      case 'risk-radar':
-        return <RiskRadar />;
       case 'profile':
         return <UserProfile />;
       case 'business-dna':

@@ -5,7 +5,7 @@ import styles from './AiCeoMode.module.css';
 import { useBusinessData } from '../context/BusinessDataContext';
 import { Dropdown } from '../components/ui/Dropdown';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
-import { chatService } from '../lib/chatService';
+import { chatService, getLocalConversations } from '../lib/chatService';
 import type { Conversation } from '../lib/chatService';
 
 interface Message {
@@ -25,8 +25,12 @@ declare global {
 export const AiCeoMode: React.FC = () => {
   const { healthScore, totalRevenue, activeCustomers, monthlyExpenses, cashFlow, documents, aiContext } = useBusinessData();
   
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  // Optimistic initial load from cache
+  const [conversations, setConversations] = useState<Conversation[]>(getLocalConversations());
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(
+    getLocalConversations().length > 0 ? getLocalConversations()[0].id : null
+  );
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -49,6 +53,7 @@ export const AiCeoMode: React.FC = () => {
     { code: 'de-DE', name: 'Deutsch' },
     { code: 'zh-CN', name: '中文' },
     { code: 'hi-IN', name: 'हिन्दी' },
+    { code: 'te-IN', name: 'తెలుగు' },
     { code: 'ar-SA', name: 'العربية' }
   ];
 
@@ -61,15 +66,22 @@ export const AiCeoMode: React.FC = () => {
     localStorage.setItem('takeover_groq_api_key', key);
   };
 
+  // Background fetch to update conversations
   useEffect(() => {
+    let isMounted = true;
     chatService.getConversations().then(data => {
+      if (!isMounted) return;
       setConversations(data);
-      if (data.length > 0) {
+      setIsLoadingConversations(false);
+      
+      // If we didn't have an active convo from cache, and we fetched some, set it
+      if (data.length > 0 && !activeConversationId) {
         setActiveConversationId(data[0].id);
-      } else {
+      } else if (data.length === 0) {
         handleNewChat();
       }
     });
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {
@@ -402,6 +414,7 @@ IMPORTANT: You must provide your entire response translated into the following l
     <div className={styles.container}>
       <ChatSidebar 
         isOpen={sidebarOpen}
+        isLoading={isLoadingConversations}
         conversations={conversations}
         activeId={activeConversationId}
         onSelect={(id) => {

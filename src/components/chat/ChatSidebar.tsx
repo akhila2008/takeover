@@ -12,7 +12,33 @@ interface ChatSidebarProps {
   onDelete: (id: string) => void;
   onRename: (id: string, newTitle: string) => void;
   isOpen: boolean;
+  isLoading?: boolean;
 }
+
+const ChatSidebarSkeleton = () => (
+  <div style={{ padding: '12px' }}>
+    {[1, 2, 3, 4, 5].map(i => (
+      <motion.div
+        key={i}
+        animate={{ opacity: [0.3, 0.6, 0.3] }}
+        transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut", delay: i * 0.1 }}
+        style={{
+          height: '40px',
+          background: 'rgba(255,255,255,0.05)',
+          borderRadius: '8px',
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 12px',
+          gap: '12px'
+        }}
+      >
+        <div style={{ width: '16px', height: '16px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }} />
+        <div style={{ flex: 1, height: '14px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }} />
+      </motion.div>
+    ))}
+  </div>
+);
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   conversations,
@@ -21,7 +47,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onNew,
   onDelete,
   onRename,
-  isOpen
+  isOpen,
+  isLoading
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -106,52 +133,58 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
 
         <div className={styles.list}>
-          {Object.entries(groups).map(([groupName, groupConvos]) => {
-            if (groupConvos.length === 0) return null;
-            return (
-              <div key={groupName}>
-                <div className={styles.groupTitle}>{groupName}</div>
-                {groupConvos.map(c => (
-                  <div 
-                    key={c.id} 
-                    className={`${styles.convoItem} ${activeId === c.id ? styles.active : ''}`}
-                    onClick={() => onSelect(c.id)}
-                  >
-                    <MessageSquare size={16} className={styles.convoIcon} />
-                    
-                    {editingId === c.id ? (
-                      <input 
-                        autoFocus
-                        value={editValue}
-                        onChange={e => setEditValue(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && saveEdit(e, c.id)}
-                        onClick={e => e.stopPropagation()}
-                        className={styles.editInput}
-                      />
-                    ) : (
-                      <div className={styles.convoTitle}>{c.title}</div>
-                    )}
+          {isLoading && conversations.length === 0 ? (
+            <ChatSidebarSkeleton />
+          ) : (
+            <>
+              {Object.entries(groups).map(([groupName, groupConvos]) => {
+                if (groupConvos.length === 0) return null;
+                return (
+                  <div key={groupName}>
+                    <div className={styles.groupTitle}>{groupName}</div>
+                    {groupConvos.map(c => (
+                      <div 
+                        key={c.id} 
+                        className={`${styles.convoItem} ${activeId === c.id ? styles.active : ''}`}
+                        onClick={() => onSelect(c.id)}
+                      >
+                        <MessageSquare size={16} className={styles.convoIcon} />
+                        
+                        {editingId === c.id ? (
+                          <input 
+                            autoFocus
+                            value={editValue}
+                            onChange={e => setEditValue(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && saveEdit(e, c.id)}
+                            onClick={e => e.stopPropagation()}
+                            className={styles.editInput}
+                          />
+                        ) : (
+                          <div className={styles.convoTitle}>{c.title}</div>
+                        )}
 
-                    {editingId === c.id ? (
-                      <div className={styles.convoActions} style={{ opacity: 1 }}>
-                        <button className={styles.actionBtn} onClick={e => saveEdit(e, c.id)}><Check size={14} /></button>
-                        <button className={styles.actionBtn} onClick={cancelEdit}><X size={14} /></button>
+                        {editingId === c.id ? (
+                          <div className={styles.convoActions} style={{ opacity: 1 }}>
+                            <button className={styles.actionBtn} onClick={e => saveEdit(e, c.id)}><Check size={14} /></button>
+                            <button className={styles.actionBtn} onClick={cancelEdit}><X size={14} /></button>
+                          </div>
+                        ) : (
+                          <div className={styles.convoActions}>
+                            <button className={styles.actionBtn} onClick={e => startEdit(e, c)} title="Rename"><Edit2 size={14} /></button>
+                            <button className={`${styles.actionBtn} ${styles.danger}`} onClick={e => handleDelete(e, c.id)} title="Delete"><Trash2 size={14} /></button>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className={styles.convoActions}>
-                        <button className={styles.actionBtn} onClick={e => startEdit(e, c)} title="Rename"><Edit2 size={14} /></button>
-                        <button className={`${styles.actionBtn} ${styles.danger}`} onClick={e => handleDelete(e, c.id)} title="Delete"><Trash2 size={14} /></button>
-                      </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', color: '#9ca3af', marginTop: '2rem', fontSize: '0.875rem' }}>
-              No conversations found.
-            </div>
+                );
+              })}
+              {!isLoading && filtered.length === 0 && (
+                <div style={{ textAlign: 'center', color: '#9ca3af', marginTop: '2rem', fontSize: '0.875rem' }}>
+                  {conversations.length === 0 ? "No conversations yet." : "No conversations found."}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

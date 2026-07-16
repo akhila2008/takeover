@@ -15,6 +15,15 @@ export interface UploadedDocument {
   year: number;
 }
 
+export type AnalysisStage = 'idle' | 'reading' | 'kpis' | 'charts' | 'insights' | 'summary' | 'complete';
+
+export interface AnalysisProgress {
+  isAnalyzing: boolean;
+  stage: AnalysisStage;
+  progressPercent: number;
+}
+
+
 export interface MonthlyFinancialData {
   month: string;
   revenue: number | null;
@@ -71,6 +80,8 @@ interface BusinessDataState {
   updateMetricsFromDocument: (fileName: string) => void;
   removeDocument: (id: string) => void;
   generateSnapshot: () => void;
+  analysisProgress: AnalysisProgress;
+  beginAnalysis: () => void;
 }
 
 const nowIST = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
@@ -109,6 +120,7 @@ const defaultState: BusinessDataState = {
   revenueSourcesData: [],
   topProductsData: [],
   isLoaded: false,
+  analysisProgress: { isAnalyzing: false, stage: 'idle', progressPercent: 0 },
   setAnalysisMode: () => {},
   setSelectedMonth: () => {},
   setSelectedYear: () => {},
@@ -116,7 +128,8 @@ const defaultState: BusinessDataState = {
   updateDocumentStatus: () => {},
   updateMetricsFromDocument: () => {},
   removeDocument: () => {},
-  generateSnapshot: () => {}
+  generateSnapshot: () => {},
+  beginAnalysis: () => {}
 };
 
 const BusinessDataContext = createContext<BusinessDataState>(defaultState);
@@ -163,7 +176,6 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [documents, setDocuments] = useState<UploadedDocument[]>(() => {
     return savedData && Array.isArray(savedData.documents) ? savedData.documents : defaultState.documents;
   });
-
   const [analysisMode, setAnalysisMode] = useState<'Monthly' | 'Annual'>(() => {
     return savedData && savedData.analysisMode ? savedData.analysisMode : defaultState.analysisMode;
   });
@@ -173,6 +185,32 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [selectedYear, setSelectedYear] = useState<number>(() => {
     return savedData && savedData.selectedYear ? savedData.selectedYear : defaultState.selectedYear;
   });
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress>({ isAnalyzing: false, stage: 'idle', progressPercent: 0 });
+
+  const beginAnalysis = () => {
+    setAnalysisProgress({ isAnalyzing: true, stage: 'reading', progressPercent: 10 });
+    
+    setTimeout(() => {
+      setAnalysisProgress({ isAnalyzing: true, stage: 'kpis', progressPercent: 30 });
+    }, 1500);
+
+    setTimeout(() => {
+      setAnalysisProgress({ isAnalyzing: true, stage: 'charts', progressPercent: 60 });
+    }, 3000);
+
+    setTimeout(() => {
+      setAnalysisProgress({ isAnalyzing: true, stage: 'insights', progressPercent: 80 });
+    }, 4500);
+
+    setTimeout(() => {
+      setAnalysisProgress({ isAnalyzing: true, stage: 'summary', progressPercent: 95 });
+    }, 6000);
+
+    setTimeout(() => {
+      setAnalysisProgress({ isAnalyzing: false, stage: 'complete', progressPercent: 100 });
+    }, 8500); // Gives time for summary to stream
+  };
 
   const [prevHealthScore, setPrevHealthScore] = useState(defaultState.prevHealthScore);
   const [prevTotalRevenue, setPrevTotalRevenue] = useState(defaultState.prevTotalRevenue);
@@ -195,8 +233,6 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [businessGrade, setBusinessGrade] = useState(defaultState.businessGrade);
 
 
-
-  const [isLoaded, setIsLoaded] = useState(false);
 
   // Fetch initial data from Supabase
   useEffect(() => {
@@ -570,10 +606,11 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       updateDocumentStatus,
       updateMetricsFromDocument,
       removeDocument,
-      generateSnapshot
+      generateSnapshot,
+      analysisProgress,
+      beginAnalysis
     }}>
       {children}
     </BusinessDataContext.Provider>
   );
 };
-

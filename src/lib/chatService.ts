@@ -25,7 +25,7 @@ const isSupabaseConfigured = () => {
   return import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co';
 };
 
-const getLocalConversations = (): Conversation[] => {
+export const getLocalConversations = (): Conversation[] => {
   try { return JSON.parse(localStorage.getItem(LOCAL_CONV_KEY) || '[]'); } catch { return []; }
 };
 
@@ -46,7 +46,7 @@ export const chatService = {
     if (isSupabaseConfigured()) {
       const { data, error } = await supabase
         .from('conversations')
-        .select('*')
+        .select('id, title, updated_at, created_at, user_id')
         .order('updated_at', { ascending: false });
       
       if (error) {

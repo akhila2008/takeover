@@ -16,6 +16,8 @@ import { TopProductsChart } from '../components/charts/TopProductsChart';
 import { CashFlowChart } from '../components/charts/CashFlowChart';
 import { ForecastChart } from '../components/charts/ForecastChart';
 import { DownloadReportBtn } from '../components/report/DownloadReportBtn';
+import { AnalysisTimeline } from '../components/ui/AnalysisTimeline';
+import { ChartSkeleton } from '../components/ui/ChartSkeleton';
 
 interface Props {
   onNavigate?: (page: string) => void;
@@ -23,11 +25,12 @@ interface Props {
 
 export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
   const { 
-    totalRevenue, cashFlow, activeCustomers, 
+    totalRevenue, cashFlow, activeCustomers,  
     prevTotalRevenue, prevCashFlow, prevActiveCustomers,
-    analysisMode, selectedMonth, selectedYear, aiContext, isLoaded
+    analysisMode, selectedMonth, selectedYear, aiContext, isLoaded, analysisProgress
   } = useBusinessData();
   const hasData = aiContext !== null;
+  const { stage, isAnalyzing } = analysisProgress;
 
   // We are bypassing the context data just for the charts demo, but keeping the AI voice logic
   const formatCurrency = (value: number) => {
@@ -63,19 +66,29 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
     setSummaryText(generateDynamicBriefing());
   }, [hasData, isLoaded, analysisMode, selectedMonth, selectedYear, aiContext]);
 
+  // Streaming text effect gated by 'summary' stage
   useEffect(() => {
-    setDisplayedText("");
-    let i = 0;
-    const textToType = generateDynamicBriefing();
-    const intervalId = setInterval(() => {
-      setDisplayedText(textToType.slice(0, i));
-      i++;
-      if (i > textToType.length) {
-        clearInterval(intervalId);
-      }
-    }, 20);
-    return () => clearInterval(intervalId);
-  }, [summaryText]);
+    if (isAnalyzing && (stage === 'reading' || stage === 'kpis' || stage === 'charts' || stage === 'insights')) {
+      setDisplayedText("");
+      return;
+    }
+    
+    if (isAnalyzing && stage === 'summary') {
+      setDisplayedText("");
+      let i = 0;
+      const textToType = summaryText;
+      const intervalId = setInterval(() => {
+        setDisplayedText(textToType.slice(0, i));
+        i++;
+        if (i > textToType.length) {
+          clearInterval(intervalId);
+        }
+      }, 30);
+      return () => clearInterval(intervalId);
+    } else if (!isAnalyzing) {
+      setDisplayedText(summaryText); // Immediately show full text if not analyzing
+    }
+  }, [summaryText, stage, isAnalyzing]);
 
   const toggleVoice = () => {
     if (isPlaying) {
@@ -117,6 +130,21 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
   const profitTrend = calculateTrend(cashFlow, prevCashFlow);
   const customersTrend = calculateTrend(activeCustomers, prevActiveCustomers);
 
+  const showKPIs = !isAnalyzing || stage === 'kpis' || stage === 'charts' || stage === 'insights' || stage === 'summary' || stage === 'complete';
+  const showCharts = !isAnalyzing || stage === 'charts' || stage === 'insights' || stage === 'summary' || stage === 'complete';
+  const showInsights = !isAnalyzing || stage === 'insights' || stage === 'summary' || stage === 'complete';
+
+  const KpiSkeleton = () => (
+    <motion.div className={`glass-panel ${styles.metricCard}`} style={{ opacity: 0.5 }}>
+      <div className={styles.metricHeader}>
+        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+        <div style={{ width: '100px', height: '16px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }} />
+      </div>
+      <div style={{ width: '140px', height: '32px', borderRadius: '4px', background: 'rgba(255,255,255,0.2)', marginTop: '8px' }} />
+      <div style={{ width: '80px', height: '14px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', marginTop: '8px' }} />
+    </motion.div>
+  );
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -136,6 +164,9 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
         </div>
       </header>
 
+      {/* Progress Timeline */}
+      <AnalysisTimeline />
+
       <motion.div 
         className={`glass-panel ${styles.summaryPanel}`}
         initial={{ opacity: 0, y: 20 }}
@@ -144,7 +175,7 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
       >
         <div className={styles.aiBadge}>AI Analysis</div>
         <p className={styles.typewriterText}>
-          {displayedText}
+          {displayedText || (isAnalyzing && <span style={{ color: 'var(--text-muted)' }}>Analyzing business health...</span>)}
           <span className="typewriter-cursor"></span>
         </p>
       </motion.div>
@@ -156,7 +187,7 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
             Loading business metrics from securely encrypted storage...
           </p>
         </div>
-      ) : !hasData ? (
+      ) : !hasData && !isAnalyzing ? (
         <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', marginTop: '24px' }}>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>
             No data found for the selected period. Please upload documents in Document Intel for {selectedMonth} {selectedYear} to unlock the Executive Briefing.
@@ -166,70 +197,85 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
         <>
           {/* ROW 1: KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-            <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.1 }}>
-              <div className={styles.metricHeader}>
-                <IndianRupee className={styles.metricIcon} style={{ color: 'var(--accent-info)' }} />
-                <span className={styles.metricLabel}>Total Revenue</span>
-              </div>
-              <div className={styles.metricValue}>{formatCurrency(totalRevenue)}</div>
-              <div className={styles.metricTrend} style={{ color: revenueTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
-                {revenueTrend.text}
-              </div>
-            </motion.div>
+            {!showKPIs ? (
+              <>
+                <KpiSkeleton />
+                <KpiSkeleton />
+                <KpiSkeleton />
+                <div className="glass-panel" style={{ opacity: 0.5, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <div style={{ width: '120px', height: '120px', borderRadius: '50%', border: '15px solid rgba(255,255,255,0.1)' }} />
+                </div>
+              </>
+            ) : (
+              <>
+                <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
+                  <div className={styles.metricHeader}>
+                    <IndianRupee className={styles.metricIcon} style={{ color: 'var(--accent-info)' }} />
+                    <span className={styles.metricLabel}>Total Revenue</span>
+                  </div>
+                  <div className={styles.metricValue}>{formatCurrency(totalRevenue)}</div>
+                  <div className={styles.metricTrend} style={{ color: revenueTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
+                    {revenueTrend.text}
+                  </div>
+                </motion.div>
 
-            <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.2 }}>
-              <div className={styles.metricHeader}>
-                <TrendingUp className={styles.metricIcon} style={{ color: 'var(--accent-success)' }} />
-                <span className={styles.metricLabel}>Net Profit</span>
-              </div>
-              <div className={styles.metricValue}>{formatCurrency(cashFlow)}</div>
-              <div className={styles.metricTrend} style={{ color: profitTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
-                {profitTrend.text}
-              </div>
-            </motion.div>
+                <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.1 }}>
+                  <div className={styles.metricHeader}>
+                    <TrendingUp className={styles.metricIcon} style={{ color: 'var(--accent-success)' }} />
+                    <span className={styles.metricLabel}>Net Profit</span>
+                  </div>
+                  <div className={styles.metricValue}>{formatCurrency(cashFlow)}</div>
+                  <div className={styles.metricTrend} style={{ color: profitTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
+                    {profitTrend.text}
+                  </div>
+                </motion.div>
 
-            <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.3 }}>
-              <div className={styles.metricHeader}>
-                <Users className={styles.metricIcon} style={{ color: '#a855f7' }} />
-                <span className={styles.metricLabel}>Active Customers</span>
-              </div>
-              <div className={styles.metricValue}>{activeCustomers.toLocaleString()}</div>
-              <div className={styles.metricTrend} style={{ color: customersTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
-                {customersTrend.text}
-              </div>
-            </motion.div>
+                <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.2 }}>
+                  <div className={styles.metricHeader}>
+                    <Users className={styles.metricIcon} style={{ color: '#a855f7' }} />
+                    <span className={styles.metricLabel}>Active Customers</span>
+                  </div>
+                  <div className={styles.metricValue}>{activeCustomers.toLocaleString()}</div>
+                  <div className={styles.metricTrend} style={{ color: customersTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
+                    {customersTrend.text}
+                  </div>
+                </motion.div>
 
-            <BusinessHealthGauge />
+                <BusinessHealthGauge />
+              </>
+            )}
           </div>
 
           {/* ROW 2: Revenue Trend & Profit vs Expenses */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-            <div id="chart-revenueTrend"><RevenueTrendChart /></div>
-            <div id="chart-profitExpense"><ProfitExpenseChart /></div>
+            <div id="chart-revenueTrend">{showCharts ? <RevenueTrendChart /> : <ChartSkeleton />}</div>
+            <div id="chart-profitExpense">{showCharts ? <ProfitExpenseChart /> : <ChartSkeleton />}</div>
           </div>
 
           {/* ROW 3: Sales Growth, Inventory & Revenue Sources */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-            <div id="chart-salesGrowth"><SalesGrowthChart /></div>
-            <div id="chart-inventory"><InventoryStatusChart /></div>
-            <div id="chart-revenueSources"><RevenueSourcesChart /></div>
+            <div id="chart-salesGrowth">{showCharts ? <SalesGrowthChart /> : <ChartSkeleton />}</div>
+            <div id="chart-inventory">{showCharts ? <InventoryStatusChart /> : <ChartSkeleton />}</div>
+            <div id="chart-revenueSources">{showCharts ? <RevenueSourcesChart /> : <ChartSkeleton />}</div>
           </div>
 
           {/* ROW 4: Top Products & Customer Acquisition */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-            <TopProductsChart />
-            <CustomerAcquisitionChart />
+            {showCharts ? <TopProductsChart /> : <ChartSkeleton />}
+            {showCharts ? <CustomerAcquisitionChart /> : <ChartSkeleton />}
           </div>
 
           {/* ROW 5: Cash Flow & Forecast */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-            <div id="chart-cashFlow"><CashFlowChart /></div>
-            <ForecastChart />
+            <div id="chart-cashFlow">{showCharts ? <CashFlowChart /> : <ChartSkeleton />}</div>
+            {showCharts ? <ForecastChart /> : <ChartSkeleton />}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '40px', marginBottom: '20px' }}>
-            <DownloadReportBtn className={styles.secondaryDownload} />
-          </div>
+          {showInsights && (
+            <motion.div style={{ display: 'flex', justifyContent: 'center', marginTop: '40px', marginBottom: '20px' }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <DownloadReportBtn className={styles.secondaryDownload} />
+            </motion.div>
+          )}
         </>
       )}
     </div>

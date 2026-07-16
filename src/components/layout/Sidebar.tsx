@@ -32,9 +32,7 @@ const navItems = [
   { icon: Dna, label: 'Business DNA' },
   { icon: TrendingUp, label: 'What-If Simulator' },
   { icon: GitCompare, label: 'Period Comparison' },
-  { icon: AlertTriangle, label: 'Risk Radar' },
   { icon: CheckSquare, label: 'Action Center' },
-  { icon: Map, label: 'Success Roadmap' },
   { icon: FileText, label: 'Document Intel' },
 ];
 

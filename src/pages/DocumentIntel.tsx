@@ -12,7 +12,7 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
   const { 
     documents, addDocument, updateDocumentStatus, 
     updateMetricsFromDocument, removeDocument, generateSnapshot,
-    selectedMonth, selectedYear, analysisMode, isLoaded
+    selectedMonth, selectedYear, analysisMode, isLoaded, beginAnalysis
   } = useBusinessData();
   const [dragActive, setDragActive] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -59,17 +59,18 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
       year
     });
 
-    // Simulate Parsing Delay (2.5 seconds to feel realistic)
-    setTimeout(() => {
-      updateDocumentStatus(docId, 'analyzed');
-      updateMetricsFromDocument(file.name);
-      
-      // Wait for metrics to finish updating via context, then take snapshot
+    // Immediately mark as analyzed so context updates
+    updateDocumentStatus(docId, 'analyzed');
+    updateMetricsFromDocument(file.name);
+    
+    // Auto-navigate to dashboard to watch progressive rendering
+    if (onNavigate) {
+      setIsTransitioning(true);
       setTimeout(() => {
-        generateSnapshot();
-        window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Analysis completed successfully!' }));
-      }, 500);
-    }, 2500);
+        onNavigate('executive-briefing');
+        beginAnalysis();
+      }, 400); // Small delay for transition
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
