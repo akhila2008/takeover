@@ -224,7 +224,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
           .select('*')
           .eq('id', periodId)
           .single();
-          
+
         if (data && !error && data.status === 'completed') {
           console.log("[Cache] Loaded analysis from Supabase for", periodId);
           if (data.metrics) {
@@ -252,11 +252,23 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
              setAiContext(data.ai_output.aiContext || null);
           }
         } else {
-          console.log("[Cache] No cache found for", periodId, "- Needs Analysis");
-          // Reset view so it doesn't show previous period's data
-          setAiContext(null);
-          setTotalRevenue(0);
-          setHealthScore(0);
+          console.log("[Cache] No cache found or Supabase error for", periodId, "error:", error?.message);
+          
+          // Check if we have documents locally for this period
+          const currentDocsForPeriod = documents.filter(d => {
+            if (analysisMode === 'Monthly') return d.month === selectedMonth && d.year === selectedYear;
+            return d.year === selectedYear;
+          });
+
+          if (currentDocsForPeriod.length > 0) {
+            console.log("[Cache] Local documents found, regenerating analysis...");
+            runAnalysisPipeline(documents);
+          } else {
+            console.log("[Cache] No local documents found, resetting view.");
+            setAiContext(null);
+            setTotalRevenue(0);
+            setHealthScore(0);
+          }
         }
       } catch (err) {
         console.error("Failed to load cached analysis", err);
