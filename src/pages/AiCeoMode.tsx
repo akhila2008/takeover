@@ -288,6 +288,24 @@ IMPORTANT: You must provide your entire response translated into the following l
       const interceptAnalyticalQuery = (query: string): string | null => {
         const q = query.toLowerCase();
         
+        // 0. Check for empty data on specific month/year queries
+        const monthsFull = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+        const askedMonth = monthsFull.find(m => q.includes(m));
+        const askedYear = q.match(/\b20\d{2}\b/)?.[0];
+
+        if (askedMonth || askedYear) {
+           if (!documents || documents.length === 0) {
+              return "I do not have any data uploaded yet. Please upload your business documents for that time period so I can analyze it.";
+           }
+           
+           if (askedMonth && monthlyChartData) {
+              const monthData = monthlyChartData.find(d => d.month.toLowerCase() === askedMonth.substring(0, 3));
+              if (!monthData || (!monthData.revenue && !monthData.expenses)) {
+                 return `I do not have any data uploaded for ${askedMonth.charAt(0).toUpperCase() + askedMonth.slice(1)} yet. Please upload the data for that month first so I can analyze it.`;
+              }
+           }
+        }
+
         // 1. Product Analysis (aiContext)
         if (q.includes('product') || q.includes('project') || q.includes('item') || q.includes('sold') || q.includes('revenue')) {
           if (!aiContext || (!aiContext.topProducts && !aiContext.highestSoldProduct && !aiContext.highestRevenueProduct)) {
