@@ -25,21 +25,6 @@ export const parseDocumentContent = (rawContent: string): ParsedTable => {
   const isTabSeparated = sampleLine.split('\t').length > sampleLine.split(',').length;
   const delimiter = isTabSeparated ? '\t' : ',';
 
-  // Find the header row by looking for common column names in the first 20 lines
-  let headerIdx = 0;
-  for (let i = 0; i < Math.min(20, lines.length); i++) {
-    const lowerLine = lines[i].toLowerCase();
-    if (lowerLine.includes('product') || lowerLine.includes('item') || 
-        lowerLine.includes('expense') || lowerLine.includes('cost') ||
-        lowerLine.includes('customer') || lowerLine.includes('client') ||
-        lowerLine.includes('revenue') || lowerLine.includes('sales') ||
-        lowerLine.includes('reorder') || lowerLine.includes('minimum') ||
-        lowerLine.includes('spend')) {
-      headerIdx = i;
-      break;
-    }
-  }
-
   // Robust CSV parser
   const splitLine = (line: string, delim: string): string[] => {
     if (delim === '\t') return line.split('\t').map(c => c.trim());
@@ -66,6 +51,25 @@ export const parseDocumentContent = (rawContent: string): ParsedTable => {
     result.push(current.trim());
     return result;
   };
+
+  // Find the header row by looking for common column names in the first 20 lines
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(20, lines.length); i++) {
+    const lowerLine = lines[i].toLowerCase();
+    // A valid header row should have multiple columns
+    const cols = splitLine(lowerLine, delimiter);
+    if (cols.length > 1 && (
+        lowerLine.includes('product') || lowerLine.includes('item') || 
+        lowerLine.includes('expense') || lowerLine.includes('cost') ||
+        lowerLine.includes('customer') || lowerLine.includes('client') ||
+        lowerLine.includes('revenue') || lowerLine.includes('sales') ||
+        lowerLine.includes('reorder') || lowerLine.includes('minimum') ||
+        lowerLine.includes('spend') || lowerLine.includes('amount') ||
+        lowerLine.includes('quantity') || lowerLine.includes('qty'))) {
+      headerIdx = i;
+      break;
+    }
+  }
 
   let headers = splitLine(lines[headerIdx], delimiter).map(h => h.toLowerCase());
   
