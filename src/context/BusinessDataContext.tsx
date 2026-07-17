@@ -268,6 +268,21 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
             setAiContext(null);
             setTotalRevenue(0);
             setHealthScore(0);
+            setActiveCustomers(0);
+            setMonthlyExpenses(0);
+            setCashFlow(0);
+            setFinancialScore(0);
+            setInventoryScore(0);
+            setCustomerScore(0);
+            setGrowthScore(0);
+            setOperationalScore(0);
+            setConfidenceScore(0);
+            setBusinessGrade('Critical');
+            setMonthlyChartData([]);
+            setInventoryChartData([]);
+            setCustomerChartData([]);
+            setRevenueSourcesData([]);
+            setTopProductsData([]);
           }
         }
       } catch (err) {
@@ -362,6 +377,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       setConfidenceScore(Math.min(99, 40 + (currentDocsForPeriod.length * 15)));
       setBusinessGrade(newAiContext.grade);
     } else {
+      setAiContext(null);
       setTotalRevenue(0);
       setMonthlyExpenses(0);
       setActiveCustomers(0);
@@ -374,6 +390,11 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       setOperationalScore(0);
       setConfidenceScore(0);
       setBusinessGrade('Critical');
+      setMonthlyChartData([]);
+      setInventoryChartData([]);
+      setCustomerChartData([]);
+      setRevenueSourcesData([]);
+      setTopProductsData([]);
     }
 
     const prevAiContext = generateIntelligenceContext(prevDocsForPeriod, [], pMonth, pYear);
