@@ -92,6 +92,14 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
           });
         }
         rawContent = fullText;
+      } else if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+        const arrayBuffer = await file.arrayBuffer();
+        // Dynamically import xlsx to avoid huge bundle load up front
+        const xlsx = await import('xlsx');
+        const workbook = xlsx.read(arrayBuffer, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        rawContent = xlsx.utils.sheet_to_csv(worksheet);
       } else {
         rawContent = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -102,6 +110,8 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
       }
     } catch (err) {
       console.error("Failed to read file content:", err);
+      alert(`Failed to parse file: ${file.name}. Please ensure it is a valid, uncorrupted file.`);
+      return;
     }
 
     let fileHash = '';

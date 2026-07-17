@@ -56,8 +56,10 @@ export interface CalculatedKPIs {
   expenses: number;
   profit: number;
   profitMargin: number;
+  grossMargin: number;
   cashFlow: number;
   salesGrowth: number;
+  expenseGrowth: number;
   totalCustomers: number;
   activeCustomers: number;
   newCustomers: number;

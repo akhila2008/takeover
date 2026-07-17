@@ -29,6 +29,8 @@ export interface AIContextObject {
   averageRating: number;
   customerRetention: string;
   revenueGrowth: number;
+  expenseGrowth: number;
+  grossMargin: number;
   topStrengths: string[];
   topRisks: string[];
   recommendations: string[];
@@ -141,18 +143,26 @@ export const generateIntelligenceContext = (
   
   // Calculate historical growth if previous docs existed
   let salesGrowth = 0;
+  let expenseGrowth = 0;
   if (previousDocuments.length > 0) {
      let prevRevenue = 0;
+     let prevExpenses = 0;
      previousDocuments.forEach(doc => {
        if (doc.rawContent) {
          const parsed = parseDocumentContent(doc.rawContent);
-         if (identifyReportType(doc.name, parsed.headers) === 'sales') {
+         const type = identifyReportType(doc.name, parsed.headers);
+         if (type === 'sales') {
            prevRevenue += analyzeSales(parsed).totalRevenue;
+         } else if (type === 'expense') {
+           prevExpenses += analyzeExpenses(parsed).totalExpenses;
          }
        }
      });
      if (prevRevenue > 0) {
        salesGrowth = Math.round(((allSales.totalRevenue - prevRevenue) / prevRevenue) * 1000) / 10;
+     }
+     if (prevExpenses > 0) {
+       expenseGrowth = Math.round(((allExpenses.totalExpenses - prevExpenses) / prevExpenses) * 1000) / 10;
      }
   }
 
@@ -161,8 +171,10 @@ export const generateIntelligenceContext = (
     expenses: allExpenses.totalExpenses,
     profit: profit,
     profitMargin: profitMargin,
+    grossMargin: profitMargin, // Proxy for Gross Margin if COGS isn't explicitly separated
     cashFlow: profit,
     salesGrowth: salesGrowth,
+    expenseGrowth: expenseGrowth,
     totalCustomers: allCustomers.totalCustomers,
     activeCustomers: allCustomers.activeCustomers,
     newCustomers: allCustomers.newCustomers,
@@ -205,6 +217,8 @@ export const generateIntelligenceContext = (
     averageRating: allCustomers.customerSatisfaction,
     customerRetention: kpis.customerRetention,
     revenueGrowth: kpis.salesGrowth,
+    expenseGrowth: kpis.expenseGrowth,
+    grossMargin: kpis.grossMargin,
     topStrengths: health.topStrengths,
     topRisks: health.topRisks,
     recommendations: health.recommendations,
