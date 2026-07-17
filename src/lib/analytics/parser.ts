@@ -75,7 +75,7 @@ export const parseDocumentContent = (rawContent: string): ParsedTable => {
   
   // Normalize headers based on strict business rules
   headers = headers.map(h => {
-    if (['revenue', 'sales', 'total revenue', 'amount', 'gross sales'].includes(h)) return 'revenue';
+    if (['revenue', 'sales', 'total revenue', 'gross sales'].includes(h)) return 'revenue';
     if (['qty', 'quantity', 'units'].includes(h)) return 'quantity';
     if (['customer', 'customer_id', 'client'].includes(h)) return 'customer_id';
     if (['expense', 'cost', 'debit', 'total expense'].includes(h)) return 'expense';
@@ -123,10 +123,12 @@ export const identifyReportType = (docName: string, headers: string[]): 'sales' 
   const hasQuantity = headers.includes('quantity') || headers.some(h => h.includes('qty'));
 
   // Use column patterns first to avoid filename false-positives
-  if (hasRevenue && !hasExpense) return 'sales';
-  if (hasExpense && !hasRevenue) return 'expense';
   if (hasInventory || (hasQuantity && !hasRevenue && !hasExpense)) return 'inventory';
   if (hasCustomer && !hasRevenue && !hasExpense && !hasInventory) return 'customer';
+  if (hasRevenue && !hasExpense) return 'sales';
+  
+  // If it has amount/expense, but not revenue, it's an expense report
+  if ((hasExpense || headers.includes('amount')) && !hasRevenue) return 'expense';
 
   // Fallback to filename
   if (lowerName.includes('sales') || lowerName.includes('revenue')) return 'sales';
