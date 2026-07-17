@@ -213,10 +213,14 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
                     <IndianRupee className={styles.metricIcon} style={{ color: 'var(--accent-info)' }} />
                     <span className={styles.metricLabel}>Total Revenue</span>
                   </div>
-                  <div className={styles.metricValue}>{formatCurrency(totalRevenue)}</div>
-                  <div className={styles.metricTrend} style={{ color: revenueTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
-                    {revenueTrend.text}
+                  <div className={styles.metricValue}>
+                    {aiContext?.hasSales ? formatCurrency(totalRevenue) : <span style={{ fontSize: '1rem', color: 'var(--accent-warning)', fontWeight: 400 }}>Sales report not uploaded</span>}
                   </div>
+                  {aiContext?.hasSales && (
+                    <div className={styles.metricTrend} style={{ color: revenueTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
+                      {revenueTrend.text}
+                    </div>
+                  )}
                 </motion.div>
 
                 <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.1 }}>
@@ -224,10 +228,14 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
                     <TrendingUp className={styles.metricIcon} style={{ color: 'var(--accent-success)' }} />
                     <span className={styles.metricLabel}>Net Profit</span>
                   </div>
-                  <div className={styles.metricValue}>{formatCurrency(cashFlow)}</div>
-                  <div className={styles.metricTrend} style={{ color: profitTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
-                    {profitTrend.text}
+                  <div className={styles.metricValue}>
+                    {aiContext?.hasExpenses ? formatCurrency(cashFlow) : <span style={{ fontSize: '1rem', color: 'var(--accent-warning)', fontWeight: 400 }}>Expense report not uploaded</span>}
                   </div>
+                  {aiContext?.hasExpenses && (
+                    <div className={styles.metricTrend} style={{ color: profitTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
+                      {profitTrend.text}
+                    </div>
+                  )}
                 </motion.div>
 
                 <motion.div className={`glass-panel ${styles.metricCard}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.2 }}>
@@ -235,10 +243,14 @@ export const ExecutiveBriefing: React.FC<Props> = ({ onNavigate }) => {
                     <Users className={styles.metricIcon} style={{ color: '#a855f7' }} />
                     <span className={styles.metricLabel}>Active Customers</span>
                   </div>
-                  <div className={styles.metricValue}>{activeCustomers.toLocaleString()}</div>
-                  <div className={styles.metricTrend} style={{ color: customersTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
-                    {customersTrend.text}
+                  <div className={styles.metricValue}>
+                    {aiContext?.hasCustomers ? activeCustomers.toLocaleString() : <span style={{ fontSize: '1rem', color: 'var(--accent-warning)', fontWeight: 400 }}>Customer report not uploaded</span>}
                   </div>
+                  {aiContext?.hasCustomers && (
+                    <div className={styles.metricTrend} style={{ color: customersTrend.isPositive ? 'var(--accent-success)' : 'var(--accent-error)' }}>
+                      {customersTrend.text}
+                    </div>
+                  )}
                 </motion.div>
 
                 <BusinessHealthGauge />

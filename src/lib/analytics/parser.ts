@@ -67,7 +67,17 @@ export const parseDocumentContent = (rawContent: string): ParsedTable => {
     return result;
   };
 
-  const headers = splitLine(lines[headerIdx], delimiter).map(h => h.toLowerCase());
+  let headers = splitLine(lines[headerIdx], delimiter).map(h => h.toLowerCase());
+  
+  // Normalize headers based on strict business rules
+  headers = headers.map(h => {
+    if (['revenue', 'sales', 'total revenue', 'amount', 'gross sales'].includes(h)) return 'revenue';
+    if (['qty', 'quantity', 'units'].includes(h)) return 'quantity';
+    if (['customer', 'customer_id', 'client'].includes(h)) return 'customer_id';
+    if (['expense', 'cost', 'debit', 'total expense'].includes(h)) return 'expense';
+    if (['payment method', 'payment_method', 'payment'].includes(h)) return 'payment_method';
+    return h;
+  });
   const rows: ParsedRow[] = [];
   const seenRows = new Set<string>(); // for deduplication
 
@@ -102,18 +112,23 @@ export const parseDocumentContent = (rawContent: string): ParsedTable => {
 export const identifyReportType = (docName: string, headers: string[]): 'sales' | 'expense' | 'inventory' | 'customer' | 'unknown' => {
   const lowerName = docName.toLowerCase();
   
-  if (lowerName.includes('sales') || lowerName.includes('revenue') || headers.some(h => h.includes('sales') || h.includes('revenue'))) {
-    return 'sales';
-  }
-  if (lowerName.includes('expense') || lowerName.includes('cost') || lowerName.includes('payroll') || headers.some(h => h.includes('expense') || h.includes('cost'))) {
-    return 'expense';
-  }
-  if (lowerName.includes('inventory') || lowerName.includes('stock') || headers.some(h => h.includes('stock') || h.includes('inventory') || h.includes('qty'))) {
-    return 'inventory';
-  }
-  if (lowerName.includes('customer') || lowerName.includes('client') || lowerName.includes('user') || headers.some(h => h.includes('customer') || h.includes('client') || h.includes('satisfaction'))) {
-    return 'customer';
-  }
+  const hasRevenue = headers.includes('revenue') || headers.some(h => h.includes('sales') || h.includes('revenue'));
+  const hasExpense = headers.includes('expense') || headers.some(h => h.includes('cost'));
+  const hasCustomer = headers.includes('customer_id') || headers.some(h => h.includes('customer') || h.includes('client'));
+  const hasInventory = headers.some(h => h.includes('stock') || h.includes('inventory'));
+  const hasQuantity = headers.includes('quantity') || headers.some(h => h.includes('qty'));
+
+  // Use column patterns first to avoid filename false-positives
+  if (hasRevenue && !hasExpense) return 'sales';
+  if (hasExpense && !hasRevenue) return 'expense';
+  if (hasInventory || (hasQuantity && !hasRevenue && !hasExpense)) return 'inventory';
+  if (hasCustomer && !hasRevenue && !hasExpense && !hasInventory) return 'customer';
+
+  // Fallback to filename
+  if (lowerName.includes('sales') || lowerName.includes('revenue')) return 'sales';
+  if (lowerName.includes('expense') || lowerName.includes('cost') || lowerName.includes('payroll')) return 'expense';
+  if (lowerName.includes('inventory') || lowerName.includes('stock')) return 'inventory';
+  if (lowerName.includes('customer') || lowerName.includes('client') || lowerName.includes('user')) return 'customer';
 
   return 'unknown';
 };

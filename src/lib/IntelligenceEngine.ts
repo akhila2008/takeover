@@ -12,6 +12,10 @@ export type { ProductData } from './analytics/types';
 
 // Re-export this type as it's used heavily in the context
 export interface AIContextObject {
+  hasSales: boolean;
+  hasExpenses: boolean;
+  hasInventory: boolean;
+  hasCustomers: boolean;
   healthScore: number;
   grade: string;
   financialScore: number;
@@ -78,6 +82,13 @@ export const generateIntelligenceContext = (
 
     const parsedTable = parseDocumentContent(doc.rawContent);
     const reportType = identifyReportType(doc.name, parsedTable.headers);
+
+    if (import.meta.env.DEV) {
+      console.log(`[DEBUG] File: ${doc.name}`);
+      console.log(`[DEBUG] Detected Report Type: ${reportType}`);
+      console.log(`[DEBUG] Normalized Headers:`, parsedTable.headers);
+      console.log(`[DEBUG] Rows Parsed: ${parsedTable.rows.length}`);
+    }
 
     if (reportType === 'sales') {
       salesDocs++;
@@ -167,6 +178,10 @@ export const generateIntelligenceContext = (
   }
 
   const kpis: CalculatedKPIs = {
+    hasSales: salesDocs > 0,
+    hasExpenses: expDocs > 0,
+    hasInventory: invDocs > 0,
+    hasCustomers: cusDocs > 0,
     revenue: allSales.totalRevenue,
     expenses: allExpenses.totalExpenses,
     profit: profit,
@@ -200,6 +215,10 @@ export const generateIntelligenceContext = (
 
   // 5. Construct Final AI Context
   return {
+    hasSales: kpis.hasSales,
+    hasExpenses: kpis.hasExpenses,
+    hasInventory: kpis.hasInventory,
+    hasCustomers: kpis.hasCustomers,
     healthScore: health.healthScore,
     grade: health.grade,
     financialScore: health.financialScore,

@@ -22,7 +22,7 @@ export const InventoryStatusChart: React.FC = () => {
         
       {!hasData ? (
         <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No data available for this period. Upload reports to view trends.</p>
+          <p style={{ color: 'var(--accent-warning)', fontSize: '0.9rem', textAlign: 'center' }}>Inventory report not uploaded.</p>
         </div>
       ) : (
     

@@ -52,6 +52,10 @@ export interface CustomerMetrics {
 }
 
 export interface CalculatedKPIs {
+  hasSales: boolean;
+  hasExpenses: boolean;
+  hasInventory: boolean;
+  hasCustomers: boolean;
   revenue: number;
   expenses: number;
   profit: number;
