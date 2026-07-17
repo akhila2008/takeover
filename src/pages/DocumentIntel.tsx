@@ -82,11 +82,8 @@ export const DocumentIntel: React.FC<Props> = ({ onNavigate }) => {
             // Sort by X coordinate ascending
             itemsOnLine.sort((a, b) => a.transform[4] - b.transform[4]);
             
-            // Join with commas to simulate CSV structure
-            const lineStr = itemsOnLine.map(item => {
-                const str = item.str.trim();
-                return str.includes(',') ? `"${str}"` : str;
-            }).join(',');
+            // Join with space instead of commas if PDF is CSV-like to prevent wrapping entire rows in quotes
+            const lineStr = itemsOnLine.map(item => item.str.trim()).join(' ');
             
             fullText += lineStr + '\n';
           });
