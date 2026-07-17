@@ -328,7 +328,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
         const ctx = generateIntelligenceContext(docsForThisMonth, docsForPrev, monthFull, selectedYear);
         if (ctx) {
           monthlyFinancials.push({ month: monthShort, revenue: ctx.revenue, expenses: ctx.expenses, profit: ctx.revenue - ctx.expenses, salesGrowth: ctx.revenueGrowth, cashFlow: ctx.cashFlow, actual: true });
-          customerAcq.push({ month: monthShort, new: Math.round(ctx.averageRating * 20), returning: Math.round(ctx.averageRating * 80) });
+          customerAcq.push({ month: monthShort, new: ctx.newCustomers, returning: ctx.returningCustomers });
         }
       } else {
         monthlyFinancials.push({ month: monthShort, revenue: null, expenses: null, profit: null, salesGrowth: null, cashFlow: null, actual: false });
@@ -336,23 +336,9 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
       }
     }
 
-    let inv: InventoryData[] = [];
-    let revSrc: RevenueSourceData[] = [];
+    let inv: InventoryData[] = newAiContext?.inventoryChartData || [];
+    let revSrc: RevenueSourceData[] = newAiContext?.revenueSources || [];
     let topProd: TopProductData[] = newAiContext?.topProducts || [];
-
-    if (newAiContext && newAiContext.revenue > 0) {
-      const isHealthy = newAiContext.inventoryStatus === 'Healthy';
-      inv = [
-        { name: 'In Stock', value: isHealthy ? 70 : 40, color: '#10b981' },
-        { name: 'Low Stock', value: isHealthy ? 20 : 35, color: '#f59e0b' },
-        { name: 'Out of Stock', value: isHealthy ? 10 : 25, color: '#ef4444' }
-      ];
-      if (newAiContext.revenueSources && newAiContext.revenueSources.length > 0) {
-        revSrc = newAiContext.revenueSources;
-      } else {
-        revSrc = []; // Ensure no hallucinated demo data is shown
-      }
-    }
 
     setAiContext(newAiContext);
     setMonthlyChartData(monthlyFinancials);
@@ -365,7 +351,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
     if (newAiContext) {
       setTotalRevenue(newAiContext.revenue);
       setMonthlyExpenses(newAiContext.expenses);
-      setActiveCustomers(newAiContext.averageRating * 100);
+      setActiveCustomers(newAiContext.activeCustomers);
       setCashFlow(newAiContext.cashFlow);
       setHealthScore(newAiContext.healthScore);
       setFinancialScore(newAiContext.financialScore);
@@ -394,7 +380,7 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
     if (prevAiContext) {
       setPrevTotalRevenue(prevAiContext.revenue);
       setPrevMonthlyExpenses(prevAiContext.expenses);
-      setPrevActiveCustomers(prevAiContext.averageRating * 100);
+      setPrevActiveCustomers(prevAiContext.activeCustomers);
       setPrevCashFlow(prevAiContext.cashFlow);
       setPrevHealthScore(prevAiContext.healthScore);
       setPrevFinancialScore(prevAiContext.financialScore);

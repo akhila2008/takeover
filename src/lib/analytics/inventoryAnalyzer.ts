@@ -14,6 +14,7 @@ export const analyzeInventory = (table: ParsedTable): InventoryMetrics => {
   const prodCol = getCol(['product', 'item', 'name']);
   const stockCol = getCol(['stock', 'quantity', 'qty', 'count', 'on_hand', 'inventory']);
   const priceCol = getCol(['price', 'cost', 'value', 'unit']);
+  const reorderCol = getCol(['reorder', 'minimum', 'threshold', 'min']);
 
   table.rows.forEach(row => {
     if (!stockCol) return;
@@ -28,9 +29,11 @@ export const analyzeInventory = (table: ParsedTable): InventoryMetrics => {
 
     if (prodCol && row[prodCol]) {
       const prodName = String(row[prodCol]).trim();
+      const reorderLevel = reorderCol ? extractNumber(row[reorderCol]) : 10; // default 10 if missing
+
       if (stock === 0) {
         outOfStockProducts.push(prodName);
-      } else if (stock < 20) { // arbitrary low stock threshold for demo
+      } else if (stock <= reorderLevel) { 
         lowStockProducts.push(prodName);
       }
     }

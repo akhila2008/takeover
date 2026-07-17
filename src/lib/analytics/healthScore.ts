@@ -13,7 +13,8 @@ export const calculateHealthScore = (kpis: CalculatedKPIs): HealthMetrics => {
   // Inventory Score (20% weight)
   // Metrics: Low Stock Count, Status
   let inventoryScore = 100;
-  if (kpis.inventoryStatus === 'At Risk') inventoryScore -= 30;
+  if (kpis.inventoryStatus === 'Critical') inventoryScore -= 50;
+  else if (kpis.inventoryStatus === 'Warning') inventoryScore -= 20;
   inventoryScore -= Math.min(kpis.lowStockCount * 5, 50);
   inventoryScore = Math.max(inventoryScore, 20);
 
@@ -37,12 +38,17 @@ export const calculateHealthScore = (kpis: CalculatedKPIs): HealthMetrics => {
   // But requirement says: Fin 40%, Inv 20%, Cus 20%, Gro 20%.
   let operationsScore = 75; // Default
 
-  const healthScore = Math.round(
+  let healthScore = Math.round(
     (financialScore * 0.4) + 
     (inventoryScore * 0.2) + 
     (customerScore * 0.2) + 
     (growthScore * 0.2)
   );
+
+  // If operating at a loss, cap the score at 74 (Average)
+  if (kpis.profit < 0 && healthScore >= 75) {
+    healthScore = 74;
+  }
 
   let grade = 'Critical';
   if (healthScore >= 90) grade = 'Excellent';

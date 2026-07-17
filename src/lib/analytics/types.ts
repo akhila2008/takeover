@@ -23,6 +23,7 @@ export interface SalesMetrics {
   productMap: Map<string, ProductData>;
   categoryMap: Map<string, number>;
   totalOrders: number;
+  averageOrderValue: number;
 }
 
 export interface ExpenseMetrics {
@@ -43,6 +44,9 @@ export interface CustomerMetrics {
   activeCustomers: number;
   newCustomers: number;
   returningCustomers: number;
+  totalSpending: number;
+  satisfactionResponses: number;
+  totalSatisfaction: number;
   averageSpending: number;
   customerSatisfaction: number;
 }
@@ -56,9 +60,14 @@ export interface CalculatedKPIs {
   salesGrowth: number;
   totalCustomers: number;
   activeCustomers: number;
+  newCustomers: number;
+  returningCustomers: number;
   averageRating: number;
+  averageOrderValue: number;
+  averageSpending: number;
   lowStockCount: number;
-  inventoryStatus: 'Healthy' | 'At Risk';
+  lowStockProductNames: string[];
+  inventoryStatus: 'Healthy' | 'Warning' | 'Critical';
   customerRetention: 'High' | 'Moderate' | 'Low';
 }
 

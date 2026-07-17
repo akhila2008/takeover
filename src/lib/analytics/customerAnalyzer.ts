@@ -74,6 +74,9 @@ export const analyzeCustomers = (table: ParsedTable): CustomerMetrics => {
     activeCustomers,
     newCustomers,
     returningCustomers,
+    totalSpending,
+    satisfactionResponses,
+    totalSatisfaction,
     averageSpending,
     customerSatisfaction: avgSat || 4.0 // fallback
   };

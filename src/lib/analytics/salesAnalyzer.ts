@@ -52,10 +52,13 @@ export const analyzeSales = (table: ParsedTable): SalesMetrics => {
     }
   });
 
+  const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
   return {
     totalRevenue,
     productMap,
     categoryMap,
-    totalOrders
+    totalOrders,
+    averageOrderValue
   };
 };

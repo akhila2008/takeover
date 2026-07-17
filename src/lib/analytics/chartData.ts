@@ -18,31 +18,9 @@ export const generateChartData = (
 ) => {
 
   // 1. Monthly Financial Data (trend)
-  // In a real app we'd parse exact dates to get a 12-month series.
-  // Here we'll generate a series ending in the selected month that reflects the actual calculated totals for the current month.
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const curIdx = months.indexOf(selectedMonth.substring(0, 3)) >= 0 ? months.indexOf(selectedMonth.substring(0, 3)) : 6;
-  
+  // Historical trend is now built dynamically in BusinessDataContext by parsing all historical files.
+  // We don't hallucinate it here anymore.
   const monthlyChartData: MonthlyFinancialData[] = [];
-  const currentProfit = sales.totalRevenue - expenses.totalExpenses;
-  
-  for (let i = Math.max(0, curIdx - 5); i <= curIdx; i++) {
-    const isCurrent = i === curIdx;
-    
-    // Smooth trend towards the actual
-    const rev = isCurrent ? sales.totalRevenue : Math.max(0, sales.totalRevenue * (1 - ((curIdx - i) * 0.1)));
-    const exp = isCurrent ? expenses.totalExpenses : Math.max(0, expenses.totalExpenses * (1 - ((curIdx - i) * 0.05)));
-    
-    monthlyChartData.push({
-      month: months[i],
-      revenue: rev,
-      expenses: exp,
-      profit: rev - exp,
-      salesGrowth: isCurrent ? 12.5 : 8.0, // simplified trend
-      cashFlow: rev - exp,
-      actual: true
-    });
-  }
 
   // 2. Inventory Data
   const inventoryChartData: InventoryData[] = [];
@@ -56,12 +34,8 @@ export const generateChartData = (
   }
 
   // 3. Customer Data
+  // Also built dynamically in BusinessDataContext across 12 months.
   const customerChartData: CustomerData[] = [];
-  customerChartData.push({
-    month: selectedMonth.substring(0, 3),
-    new: customers.newCustomers,
-    returning: customers.returningCustomers
-  });
 
   // 4. Revenue Sources Data
   const revenueSourcesData: RevenueSourceData[] = [];

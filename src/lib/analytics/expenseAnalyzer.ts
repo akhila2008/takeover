@@ -34,8 +34,8 @@ export const analyzeExpenses = (table: ParsedTable): ExpenseMetrics => {
         categoryMap.set(catName, existing + rowAmount);
       }
     } else {
-       const existing = categoryMap.get('Operating') || 0; // Default generic category
-       categoryMap.set('Operating', existing + rowAmount);
+       const existing = categoryMap.get('Uncategorized') || 0; 
+       categoryMap.set('Uncategorized', existing + rowAmount);
     }
   });
 

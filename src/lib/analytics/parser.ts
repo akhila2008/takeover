@@ -7,9 +7,9 @@ export interface ParsedTable {
   rows: ParsedRow[];
 }
 
-export const extractNumber = (val: string | number): number => {
+export const extractNumber = (val: string | number | undefined | null): number => {
+  if (val === undefined || val === null || val === '') return 0;
   if (typeof val === 'number') return val;
-  if (!val) return 0;
   // Remove currencies, commas, spaces, etc.
   const clean = val.replace(/[^0-9.-]+/g, '');
   const parsed = parseFloat(clean);
@@ -20,6 +20,11 @@ export const parseDocumentContent = (rawContent: string): ParsedTable => {
   const lines = rawContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   if (lines.length < 2) return { headers: [], rows: [] };
 
+  // Detect delimiter (comma or tab)
+  const sampleLine = lines[Math.min(1, lines.length - 1)];
+  const isTabSeparated = sampleLine.split('\t').length > sampleLine.split(',').length;
+  const delimiter = isTabSeparated ? '\t' : ',';
+
   // Find the header row by looking for common column names in the first 20 lines
   let headerIdx = 0;
   for (let i = 0; i < Math.min(20, lines.length); i++) {
@@ -27,32 +32,67 @@ export const parseDocumentContent = (rawContent: string): ParsedTable => {
     if (lowerLine.includes('product') || lowerLine.includes('item') || 
         lowerLine.includes('expense') || lowerLine.includes('cost') ||
         lowerLine.includes('customer') || lowerLine.includes('client') ||
-        lowerLine.includes('revenue') || lowerLine.includes('sales')) {
+        lowerLine.includes('revenue') || lowerLine.includes('sales') ||
+        lowerLine.includes('reorder') || lowerLine.includes('minimum') ||
+        lowerLine.includes('spend')) {
       headerIdx = i;
       break;
     }
   }
 
-  // Very basic CSV parse handling commas inside quotes
-  const splitCsvLine = (line: string): string[] => {
-    return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
+  // Robust CSV parser
+  const splitLine = (line: string, delim: string): string[] => {
+    if (delim === '\t') return line.split('\t').map(c => c.trim());
+    
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++; // Skip escaped quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === delim && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
   };
 
-  const headers = splitCsvLine(lines[headerIdx]).map(h => h.toLowerCase());
+  const headers = splitLine(lines[headerIdx], delimiter).map(h => h.toLowerCase());
   const rows: ParsedRow[] = [];
+  const seenRows = new Set<string>(); // for deduplication
 
   for (let i = headerIdx + 1; i < lines.length; i++) {
-    const cols = splitCsvLine(lines[i]);
-    // Skip empty rows or mostly empty rows
+    const cols = splitLine(lines[i], delimiter);
+    // Skip empty rows
     if (cols.length === 0 || (cols.length === 1 && cols[0] === '')) continue;
     
     const rowObj: ParsedRow = {};
+    let isEmpty = true;
+    
     headers.forEach((header, idx) => {
-      if (idx < cols.length) {
-        rowObj[header] = cols[idx];
-      }
+      let val = idx < cols.length ? cols[idx] : '';
+      if (val !== '') isEmpty = false;
+      rowObj[header] = val;
     });
-    rows.push(rowObj);
+
+    if (isEmpty) continue;
+
+    // Deduplicate exact row matches
+    const rowStr = JSON.stringify(rowObj);
+    if (!seenRows.has(rowStr)) {
+      seenRows.add(rowStr);
+      rows.push(rowObj);
+    }
   }
 
   return { headers, rows };

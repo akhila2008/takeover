@@ -254,6 +254,15 @@ export const AiCeoMode: React.FC = () => {
     let finalResponseText = '';
 
     try {
+      const payload = {
+        revenue: aiContext?.revenue || 0,
+        expenses: aiContext?.expenses || 0,
+        profit: (aiContext?.revenue || 0) - (aiContext?.expenses || 0),
+        profitMargin: aiContext?.profitMargin || 0,
+        topProduct: topProductsData && topProductsData.length > 0 ? topProductsData[0].name : "None",
+        lowStockProducts: aiContext?.lowStockProductNames || []
+      };
+
       const systemPrompt = `You are an elite AI Business Executive Assistant.
 CRITICAL RULES:
 1. Speak exactly like a real human having a direct conversation. Use a warm, natural, and highly realistic conversational tone. 
@@ -264,12 +273,7 @@ CRITICAL RULES:
 6. ALL financial numbers in the data are in Indian Rupees (INR). You MUST ALWAYS use the ₹ symbol or the word "Rupees" when discussing money. Never use dollars or $.
 
 CURRENT BUSINESS INTELLIGENCE CONTEXT (STRICT TRUTH):
-${JSON.stringify({
-  aiContext: aiContext || { status: 'No data' },
-  topProducts: topProductsData || [],
-  monthlySales: monthlyChartData ? monthlyChartData.filter(m => m.actual) : [],
-  revenueSources: revenueSourcesData || []
-}, null, 2)}
+${JSON.stringify(payload, null, 2)}
 
 IMPORTANT: You must provide your entire response translated into the following language code: ${language}`;
       
