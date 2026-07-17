@@ -211,87 +211,40 @@ export const BusinessDataProvider: React.FC<{ children: ReactNode }> = ({ childr
     return savedData && savedData.topProductsData ? savedData.topProductsData : defaultState.topProductsData;
   });
 
-  // Load analysis for the current period from cache instead of regenerating
+  // Load analysis for the current period from documents
   useEffect(() => {
     if (!isLoaded) return;
     
-    const loadCachedAnalysis = async () => {
-      const periodId = analysisMode === 'Monthly' ? `Monthly-${selectedMonth}-${selectedYear}` : `Annual-${selectedYear}`;
-      
-      try {
-        const { data, error } = await supabase
-          .from('ai_analysis_cache')
-          .select('*')
-          .eq('id', periodId)
-          .single();
+    const currentDocsForPeriod = documents.filter(d => {
+      if (analysisMode === 'Monthly') return d.month === selectedMonth && d.year === selectedYear;
+      return d.year === selectedYear;
+    });
 
-        if (data && !error && data.status === 'completed') {
-          console.log("[Cache] Loaded analysis from Supabase for", periodId);
-          if (data.metrics) {
-             setHealthScore(data.metrics.healthScore || 0);
-             setTotalRevenue(data.metrics.totalRevenue || 0);
-             setActiveCustomers(data.metrics.activeCustomers || 0);
-             setMonthlyExpenses(data.metrics.monthlyExpenses || 0);
-             setCashFlow(data.metrics.cashFlow || 0);
-             setFinancialScore(data.metrics.financialScore || 0);
-             setInventoryScore(data.metrics.inventoryScore || 0);
-             setCustomerScore(data.metrics.customerScore || 0);
-             setGrowthScore(data.metrics.growthScore || 0);
-             setOperationalScore(data.metrics.operationalScore || 0);
-             setConfidenceScore(data.metrics.confidenceScore || 0);
-             setBusinessGrade(data.metrics.businessGrade || 'Critical');
-          }
-          if (data.charts) {
-             setMonthlyChartData(data.charts.monthlyChartData || []);
-             setInventoryChartData(data.charts.inventoryChartData || []);
-             setCustomerChartData(data.charts.customerChartData || []);
-             setRevenueSourcesData(data.charts.revenueSourcesData || []);
-             setTopProductsData(data.charts.topProductsData || []);
-          }
-          if (data.ai_output) {
-             setAiContext(data.ai_output.aiContext || null);
-          }
-        } else {
-          console.log("[Cache] No cache found or Supabase error for", periodId, "error:", error?.message);
-          
-          // Check if we have documents locally for this period
-          const currentDocsForPeriod = documents.filter(d => {
-            if (analysisMode === 'Monthly') return d.month === selectedMonth && d.year === selectedYear;
-            return d.year === selectedYear;
-          });
-
-          if (currentDocsForPeriod.length > 0) {
-            console.log("[Cache] Local documents found, regenerating analysis...");
-            runAnalysisPipeline(documents);
-          } else {
-            console.log("[Cache] No local documents found, resetting view.");
-            setAiContext(null);
-            setTotalRevenue(0);
-            setHealthScore(0);
-            setActiveCustomers(0);
-            setMonthlyExpenses(0);
-            setCashFlow(0);
-            setFinancialScore(0);
-            setInventoryScore(0);
-            setCustomerScore(0);
-            setGrowthScore(0);
-            setOperationalScore(0);
-            setConfidenceScore(0);
-            setBusinessGrade('Critical');
-            setMonthlyChartData([]);
-            setInventoryChartData([]);
-            setCustomerChartData([]);
-            setRevenueSourcesData([]);
-            setTopProductsData([]);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load cached analysis", err);
-      }
-    };
-    
-    loadCachedAnalysis();
-  }, [selectedMonth, selectedYear, analysisMode, isLoaded]);
+    if (currentDocsForPeriod.length > 0) {
+      console.log("[Data] Local documents found for period, running mathematical analysis...");
+      runAnalysisPipeline(documents);
+    } else {
+      console.log("[Data] No local documents found, resetting view for empty month.");
+      setAiContext(null);
+      setTotalRevenue(0);
+      setHealthScore(0);
+      setActiveCustomers(0);
+      setMonthlyExpenses(0);
+      setCashFlow(0);
+      setFinancialScore(0);
+      setInventoryScore(0);
+      setCustomerScore(0);
+      setGrowthScore(0);
+      setOperationalScore(0);
+      setConfidenceScore(0);
+      setBusinessGrade('Critical');
+      setMonthlyChartData([]);
+      setInventoryChartData([]);
+      setCustomerChartData([]);
+      setRevenueSourcesData([]);
+      setTopProductsData([]);
+    }
+  }, [selectedMonth, selectedYear, analysisMode, isLoaded, documents]);
 
   const runAnalysisPipeline = (currentDocs: UploadedDocument[]) => {
     // 1. Determine period docs
