@@ -7,12 +7,18 @@ export const analyzeExpenses = (table: ParsedTable): ExpenseMetrics => {
   const categoryMap = new Map<string, number>();
   let largestExpense: { name: string, value: number } | null = null;
 
-  // Find column keys
-  const getCol = (keywords: string[]) => table.headers.find(h => keywords.some(k => h.includes(k)));
+  // Find column keys strictly by priority order
+  const getColByPriority = (priorities: string[]) => {
+    for (const p of priorities) {
+      const match = table.headers.find(h => h.includes(p));
+      if (match) return match;
+    }
+    return undefined;
+  };
   
-  const descCol = getCol(['description', 'item', 'name', 'expense']);
-  const amountCol = getCol(['amount', 'cost', 'total', 'value', 'price']);
-  const catCol = getCol(['category', 'type', 'group', 'department']);
+  const descCol = getColByPriority(['description', 'item', 'name', 'expense']);
+  const amountCol = getColByPriority(['amount', 'expense amount', 'expense', 'cost', 'debit', 'total expense']);
+  const catCol = getColByPriority(['category', 'type', 'group', 'department']);
 
   table.rows.forEach(row => {
     if (!amountCol) return;

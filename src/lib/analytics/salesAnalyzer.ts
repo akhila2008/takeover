@@ -8,13 +8,19 @@ export const analyzeSales = (table: ParsedTable): SalesMetrics => {
   const categoryMap = new Map<string, number>();
   let totalOrders = 0;
 
-  // Find column keys
-  const getCol = (keywords: string[]) => table.headers.find(h => keywords.some(k => h.includes(k)));
+  // Find column keys strictly by priority order
+  const getColByPriority = (priorities: string[]) => {
+    for (const p of priorities) {
+      const match = table.headers.find(h => h.includes(p));
+      if (match) return match;
+    }
+    return undefined;
+  };
   
-  const prodCol = getCol(['product', 'item', 'name']);
-  const revCol = getCol(['revenue', 'total', 'sales', 'amount']);
-  const qtyCol = getCol(['quantity', 'qty', 'count']);
-  const catCol = getCol(['category', 'type', 'group']);
+  const prodCol = getColByPriority(['product', 'item', 'name']);
+  const revCol = getColByPriority(['revenue', 'total revenue', 'sales amount', 'sales', 'amount', 'total']);
+  const qtyCol = getColByPriority(['quantity', 'qty', 'count']);
+  const catCol = getColByPriority(['category', 'type', 'group']);
 
   table.rows.forEach(row => {
     // If no specific revenue column is found but there's a generic amount column, we could try to guess, 
