@@ -1,6 +1,6 @@
 import type { ParsedTable } from './parser';
 import { extractNumber } from './parser';
-import type { SalesMetrics, ProductData } from './types';
+import type { SalesMetrics, ProductData, SalesTransaction } from './types';
 
 export const analyzeSales = (table: ParsedTable): SalesMetrics => {
   let totalRevenue = 0;
@@ -22,6 +22,13 @@ export const analyzeSales = (table: ParsedTable): SalesMetrics => {
   const qtyCol = getColByPriority(['quantity', 'qty', 'count']);
   const catCol = getColByPriority(['category', 'type', 'group']);
 
+  const invCol = getColByPriority(['invoice', 'id', 'transaction', 'order']);
+  const dateCol = getColByPriority(['date', 'time', 'timestamp']);
+  const custCol = getColByPriority(['customer', 'client', 'buyer']);
+  const payCol = getColByPriority(['payment', 'method', 'type']);
+  
+  const transactions: SalesTransaction[] = [];
+
   table.rows.forEach(row => {
     // If no specific revenue column is found but there's a generic amount column, we could try to guess, 
     // but relying on finding the column is safer.
@@ -32,13 +39,14 @@ export const analyzeSales = (table: ParsedTable): SalesMetrics => {
 
     totalRevenue += rowRev;
     totalOrders += 1;
+    
+    const qty = qtyCol ? extractNumber(row[qtyCol]) : 1;
+    const cat = catCol ? String(row[catCol]).trim() : 'Uncategorized';
+    let prodName = 'Unknown';
 
     if (prodCol && row[prodCol]) {
-      const prodName = String(row[prodCol]).trim();
+      prodName = String(row[prodCol]).trim();
       if (prodName) {
-        const qty = qtyCol ? extractNumber(row[qtyCol]) : 1;
-        const cat = catCol ? String(row[catCol]).trim() : 'Uncategorized';
-        
         const existing = productMap.get(prodName) || { name: prodName, quantity: 0, revenue: 0, category: cat };
         existing.quantity += qty;
         existing.revenue += rowRev;
@@ -46,16 +54,20 @@ export const analyzeSales = (table: ParsedTable): SalesMetrics => {
       }
     }
 
-    if (catCol && row[catCol]) {
-      const catName = String(row[catCol]).trim();
-      if (catName) {
-        const existing = categoryMap.get(catName) || 0;
-        categoryMap.set(catName, existing + rowRev);
-      }
-    } else {
-       const existing = categoryMap.get('Uncategorized') || 0;
-       categoryMap.set('Uncategorized', existing + rowRev);
-    }
+    const existingCat = categoryMap.get(cat) || 0;
+    categoryMap.set(cat, existingCat + rowRev);
+    
+    transactions.push({
+      invoiceId: invCol && row[invCol] ? String(row[invCol]).trim() : `INV-${totalOrders}`,
+      date: dateCol && row[dateCol] ? String(row[dateCol]).trim() : 'Unknown Date',
+      customer: custCol && row[custCol] ? String(row[custCol]).trim() : 'Unknown Customer',
+      product: prodName,
+      category: cat,
+      quantity: qty,
+      unitPrice: qty > 0 ? Number((rowRev / qty).toFixed(2)) : rowRev,
+      revenue: rowRev,
+      paymentMethod: payCol && row[payCol] ? String(row[payCol]).trim() : 'Unknown'
+    });
   });
 
   const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -65,6 +77,7 @@ export const analyzeSales = (table: ParsedTable): SalesMetrics => {
     productMap,
     categoryMap,
     totalOrders,
-    averageOrderValue
+    averageOrderValue,
+    transactions
   };
 };

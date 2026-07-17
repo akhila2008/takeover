@@ -1,6 +1,6 @@
 import type { ParsedTable } from './parser';
 import { extractNumber } from './parser';
-import type { CustomerMetrics } from './types';
+import type { CustomerMetrics, CustomerItem } from './types';
 
 export const analyzeCustomers = (table: ParsedTable): CustomerMetrics => {
   let totalCustomers = 0;
@@ -19,6 +19,13 @@ export const analyzeCustomers = (table: ParsedTable): CustomerMetrics => {
   const activeCol = getCol(['active', 'status', 'recent']);
   const typeCol = getCol(['type', 'new', 'returning']);
   const satCol = getCol(['satisfaction', 'nps', 'rating', 'score']);
+
+  const ageCol = getCol(['age', 'dob', 'birth', 'years']);
+  const cityCol = getCol(['city', 'location', 'region', 'area', 'address']);
+  const orderCol = getCol(['order', 'purchase', 'count', 'frequency']);
+  const dateCol = getCol(['date', 'last', 'recent', 'time']);
+
+  const customers: CustomerItem[] = [];
 
   table.rows.forEach(row => {
     if (!idCol) return;
@@ -43,23 +50,36 @@ export const analyzeCustomers = (table: ParsedTable): CustomerMetrics => {
       if (type.includes('new')) newCustomers++;
       else returningCustomers++;
     } else {
-      // randomly assign if not specified just to have metric structure, or just say they are all returning
       returningCustomers++;
     }
 
     // Spending
+    let spending = 0;
     if (spendCol) {
-      totalSpending += extractNumber(row[spendCol]);
+      spending = extractNumber(row[spendCol]);
+      totalSpending += spending;
     }
 
     // Satisfaction
+    let satisfaction = 0;
     if (satCol) {
-      const sat = extractNumber(row[satCol]);
-      if (sat > 0) {
-        totalSatisfaction += sat;
+      satisfaction = extractNumber(row[satCol]);
+      if (satisfaction > 0) {
+        totalSatisfaction += satisfaction;
         satisfactionResponses++;
       }
     }
+
+    customers.push({
+      customerId: cid,
+      name: cid, // fallback to id as name if distinct name col is not mapped separately for now
+      age: ageCol && row[ageCol] ? extractNumber(row[ageCol]) : 0,
+      city: cityCol && row[cityCol] ? String(row[cityCol]).trim() : 'Unknown',
+      orders: orderCol && row[orderCol] ? extractNumber(row[orderCol]) : (spending > 0 ? 1 : 0),
+      totalSpent: spending,
+      satisfactionScore: satisfaction,
+      lastPurchase: dateCol && row[dateCol] ? String(row[dateCol]).trim() : 'Unknown'
+    });
   });
 
   const averageSpending = totalCustomers > 0 ? (totalSpending / totalCustomers) : 0;
@@ -78,6 +98,7 @@ export const analyzeCustomers = (table: ParsedTable): CustomerMetrics => {
     satisfactionResponses,
     totalSatisfaction,
     averageSpending,
-    customerSatisfaction: avgSat || 4.0 // fallback
+    customerSatisfaction: avgSat || 4.0, // fallback
+    customers
   };
 };

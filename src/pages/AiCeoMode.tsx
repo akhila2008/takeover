@@ -254,13 +254,26 @@ export const AiCeoMode: React.FC = () => {
     let finalResponseText = '';
 
     try {
+      const suppliers = Array.from(new Set((aiContext?.inventoryProducts || []).map(p => p.supplier))).filter(s => s && s !== 'Unknown Supplier');
+      const paymentMethods = Array.from(new Set((aiContext?.salesTransactions || []).map(t => t.paymentMethod))).filter(p => p && p !== 'Unknown');
+      const customerCities = Array.from(new Set((aiContext?.customers || []).map(c => c.city))).filter(c => c && c !== 'Unknown');
+
       const payload = {
         revenue: aiContext?.revenue || 0,
         expenses: aiContext?.expenses || 0,
         profit: (aiContext?.revenue || 0) - (aiContext?.expenses || 0),
         profitMargin: aiContext?.profitMargin || 0,
         topProduct: topProductsData && topProductsData.length > 0 ? topProductsData[0].name : "None",
-        lowStockProducts: aiContext?.lowStockProductNames || []
+        lowStockProducts: aiContext?.lowStockProductNames || [],
+        inventoryProducts: aiContext?.inventoryProducts || [],
+        customers: aiContext?.customers || [],
+        suppliers: suppliers,
+        expenseCategories: Array.from(new Set((aiContext?.expenseBreakdown || []).map((e: any) => e.category))),
+        paymentMethods: paymentMethods,
+        salesTransactions: aiContext?.salesTransactions || [],
+        categoryRevenue: aiContext?.revenueSources || [],
+        customerCities: customerCities,
+        expenseBreakdown: aiContext?.expenseBreakdown || []
       };
 
       const systemPrompt = `You are a professional business advisor and consultant.
@@ -308,25 +321,21 @@ IMPORTANT: You must provide your entire response translated into the following l
 
         // 1. Product Analysis (aiContext)
         if (q.includes('product') || q.includes('project') || q.includes('item') || q.includes('sold') || q.includes('revenue')) {
-          if (!aiContext || (!aiContext.topProducts && !aiContext.highestSoldProduct && !aiContext.highestRevenueProduct)) {
-             return "The uploaded data does not contain enough information to determine product performance.";
-          }
-          
           if (q.includes('highest') || q.includes('best') || q.includes('most') || q.includes('top') || q.includes('fast')) {
             if (q.includes('revenue') || q.includes('gross') || q.includes('money')) {
-              if (aiContext.highestRevenueProduct) {
+              if (aiContext?.highestRevenueProduct) {
                 return `Highest Revenue Product:\nProduct Name: ${aiContext.highestRevenueProduct.name}\nRevenue: ₹${aiContext.highestRevenueProduct.revenue.toLocaleString()}`;
               }
-            } else if (aiContext.highestSoldProduct) {
+            } else if (aiContext?.highestSoldProduct) {
               return `Highest Sold Product:\nProduct Name: ${aiContext.highestSoldProduct.name}\nQuantity Sold: ${aiContext.highestSoldProduct.quantity.toLocaleString()}`;
             }
           }
           if (q.includes('lowest') || q.includes('worst') || q.includes('least') || q.includes('bottom') || q.includes('slow')) {
             if (q.includes('revenue') || q.includes('gross') || q.includes('money')) {
-              if (aiContext.lowestRevenueProduct) {
+              if (aiContext?.lowestRevenueProduct) {
                 return `Lowest Revenue Product:\nProduct Name: ${aiContext.lowestRevenueProduct.name}\nRevenue: ₹${aiContext.lowestRevenueProduct.revenue.toLocaleString()}`;
               }
-            } else if (aiContext.lowestSoldProduct) {
+            } else if (aiContext?.lowestSoldProduct) {
               return `Lowest Sold Product:\nProduct Name: ${aiContext.lowestSoldProduct.name}\nQuantity Sold: ${aiContext.lowestSoldProduct.quantity.toLocaleString()}`;
             }
           }
@@ -334,12 +343,9 @@ IMPORTANT: You must provide your entire response translated into the following l
         
         // 2. Time/Month Analysis (monthlyChartData)
         if (q.includes('month') || q.includes('when')) {
-          if (!monthlyChartData || monthlyChartData.length === 0) return "The uploaded data does not contain enough information to determine monthly trends.";
-          
-          const validMonths = monthlyChartData.filter(m => m.actual && m.revenue !== null);
-          if (validMonths.length === 0) return "There is no actual monthly data available to answer this question.";
-          
-          if (q.includes('revenue') || q.includes('sales')) {
+          const validMonths = monthlyChartData ? monthlyChartData.filter(m => m.actual && m.revenue !== null) : [];
+          if (validMonths.length > 0) {
+            if (q.includes('revenue') || q.includes('sales')) {
             const sortedRev = [...validMonths].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
             if (q.includes('highest') || q.includes('best') || q.includes('most')) {
               return `Highest Revenue Month:\nMonth: ${sortedRev[0].month}\nRevenue: ₹${(sortedRev[0].revenue || 0).toLocaleString()}`;
@@ -370,10 +376,11 @@ IMPORTANT: You must provide your entire response translated into the following l
             }
           }
         }
+      }
         
         // 3. Category/Source Analysis (revenueSourcesData)
         if (q.includes('category') || q.includes('source') || q.includes('channel')) {
-          if (!revenueSourcesData || revenueSourcesData.length === 0) return "The uploaded data does not contain enough information to determine category performance.";
+          if (revenueSourcesData && revenueSourcesData.length > 0) {
           
           const sortedCat = [...revenueSourcesData].sort((a, b) => b.value - a.value);
           if (q.includes('highest') || q.includes('best') || q.includes('most')) {
@@ -384,6 +391,7 @@ IMPORTANT: You must provide your entire response translated into the following l
             return `Worst Performing Category:\nCategory Name: ${lowest.name}\nRevenue Generated: ₹${lowest.value.toLocaleString()}`;
           }
         }
+      }
 
         return null;
       };

@@ -58,6 +58,10 @@ export interface AIContextObject {
   activeCustomers: number;
   newCustomers: number;
   returningCustomers: number;
+  inventoryProducts?: any[];
+  customers?: any[];
+  expenseBreakdown?: any[];
+  salesTransactions?: any[];
 }
 
 export const generateIntelligenceContext = (
@@ -69,10 +73,10 @@ export const generateIntelligenceContext = (
   if (documents.length === 0) return null;
 
   // Initialize accumulators
-  const allSales: SalesMetrics = { totalRevenue: 0, productMap: new Map(), categoryMap: new Map(), totalOrders: 0, averageOrderValue: 0 };
-  const allExpenses: ExpenseMetrics = { totalExpenses: 0, categoryMap: new Map(), largestExpense: null };
-  const allInventory: InventoryMetrics = { currentStock: 0, inventoryValue: 0, lowStockProducts: [], outOfStockProducts: [] };
-  const allCustomers: CustomerMetrics = { totalCustomers: 0, activeCustomers: 0, newCustomers: 0, returningCustomers: 0, averageSpending: 0, customerSatisfaction: 4.0, totalSpending: 0, satisfactionResponses: 0, totalSatisfaction: 0 };
+  const allSales: SalesMetrics = { totalRevenue: 0, productMap: new Map(), categoryMap: new Map(), totalOrders: 0, averageOrderValue: 0, transactions: [] };
+  const allExpenses: ExpenseMetrics = { totalExpenses: 0, categoryMap: new Map(), largestExpense: null, expenses: [] };
+  const allInventory: InventoryMetrics = { currentStock: 0, inventoryValue: 0, lowStockProducts: [], outOfStockProducts: [], products: [] };
+  const allCustomers: CustomerMetrics = { totalCustomers: 0, activeCustomers: 0, newCustomers: 0, returningCustomers: 0, averageSpending: 0, customerSatisfaction: 4.0, totalSpending: 0, satisfactionResponses: 0, totalSatisfaction: 0, customers: [] };
 
   let salesDocs = 0, expDocs = 0, invDocs = 0, cusDocs = 0;
 
@@ -106,6 +110,7 @@ export const generateIntelligenceContext = (
         const existing = allSales.categoryMap.get(key) || 0;
         allSales.categoryMap.set(key, existing + val);
       });
+      allSales.transactions.push(...metrics.transactions);
     } 
     else if (reportType === 'expense') {
       expDocs++;
@@ -120,6 +125,7 @@ export const generateIntelligenceContext = (
         const existing = allExpenses.categoryMap.get(key) || 0;
         allExpenses.categoryMap.set(key, existing + val);
       });
+      allExpenses.expenses.push(...metrics.expenses);
     }
     else if (reportType === 'inventory') {
       invDocs++;
@@ -128,6 +134,7 @@ export const generateIntelligenceContext = (
       allInventory.inventoryValue += metrics.inventoryValue;
       allInventory.lowStockProducts.push(...metrics.lowStockProducts);
       allInventory.outOfStockProducts.push(...metrics.outOfStockProducts);
+      allInventory.products.push(...metrics.products);
     }
     else if (reportType === 'customer') {
       cusDocs++;
@@ -140,6 +147,7 @@ export const generateIntelligenceContext = (
       allCustomers.satisfactionResponses += metrics.satisfactionResponses;
       allCustomers.totalSatisfaction += metrics.totalSatisfaction;
       allCustomers.averageSpending = allCustomers.totalCustomers > 0 ? allCustomers.totalSpending / allCustomers.totalCustomers : 0;
+      allCustomers.customers.push(...metrics.customers);
       
       let rawAvgSat = allCustomers.satisfactionResponses > 0 ? (allCustomers.totalSatisfaction / allCustomers.satisfactionResponses) : 0;
       if (rawAvgSat > 10) rawAvgSat = (rawAvgSat / 100) * 5;
@@ -252,6 +260,10 @@ export const generateIntelligenceContext = (
     customerChartData: charts.customerChartData,
     activeCustomers: allCustomers.activeCustomers,
     newCustomers: allCustomers.newCustomers,
-    returningCustomers: allCustomers.returningCustomers
+    returningCustomers: allCustomers.returningCustomers,
+    inventoryProducts: allInventory.products,
+    customers: allCustomers.customers,
+    expenseBreakdown: allExpenses.expenses,
+    salesTransactions: allSales.transactions
   };
 };

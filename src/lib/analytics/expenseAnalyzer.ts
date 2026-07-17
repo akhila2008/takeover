@@ -1,6 +1,6 @@
 import type { ParsedTable } from './parser';
 import { extractNumber } from './parser';
-import type { ExpenseMetrics } from './types';
+import type { ExpenseMetrics, ExpenseItem } from './types';
 
 export const analyzeExpenses = (table: ParsedTable): ExpenseMetrics => {
   let totalExpenses = 0;
@@ -20,6 +20,10 @@ export const analyzeExpenses = (table: ParsedTable): ExpenseMetrics => {
   const amountCol = getColByPriority(['amount', 'expense amount', 'expense', 'cost', 'debit', 'total expense']);
   const catCol = getColByPriority(['category', 'type', 'group', 'department']);
 
+  const dateCol = getColByPriority(['date', 'time', 'timestamp']);
+  
+  const expenses: ExpenseItem[] = [];
+
   table.rows.forEach(row => {
     if (!amountCol) return;
 
@@ -28,26 +32,31 @@ export const analyzeExpenses = (table: ParsedTable): ExpenseMetrics => {
 
     totalExpenses += rowAmount;
 
-    const desc = descCol ? String(row[descCol]).trim() : 'Unknown';
+    const desc = descCol && row[descCol] ? String(row[descCol]).trim() : 'Unknown';
     if (!largestExpense || rowAmount > largestExpense.value) {
       largestExpense = { name: desc, value: rowAmount };
     }
 
+    let catName = 'Uncategorized';
     if (catCol && row[catCol]) {
-      const catName = String(row[catCol]).trim();
-      if (catName) {
-        const existing = categoryMap.get(catName) || 0;
-        categoryMap.set(catName, existing + rowAmount);
-      }
-    } else {
-       const existing = categoryMap.get('Uncategorized') || 0; 
-       categoryMap.set('Uncategorized', existing + rowAmount);
+      catName = String(row[catCol]).trim() || 'Uncategorized';
     }
+    
+    const existingCat = categoryMap.get(catName) || 0;
+    categoryMap.set(catName, existingCat + rowAmount);
+    
+    expenses.push({
+      date: dateCol && row[dateCol] ? String(row[dateCol]).trim() : 'Unknown Date',
+      category: catName,
+      description: desc,
+      amount: rowAmount
+    });
   });
 
   return {
     totalExpenses,
     categoryMap,
-    largestExpense
+    largestExpense,
+    expenses
   };
 };
